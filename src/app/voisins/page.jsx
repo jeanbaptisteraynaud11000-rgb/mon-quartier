@@ -1,16 +1,7 @@
 // Server Component : annuaire des voisins du quartier.
-//
-// NOTE SUR LA PORTÉE : la vraie carte géographique interactive (section 7
-// du prompt maître) est volontairement laissée pour un chantier dédié —
-// elle nécessite une bibliothèque de cartographie (Leaflet/Mapbox) ET de
-// stocker les coordonnées approximatives de chaque utilisateur, qu'on ne
-// conserve pas encore aujourd'hui (seul le polygone du quartier existe).
-// Cette page couvre déjà la partie utile immédiatement : voir qui fait
-// partie de son quartier, dans le respect des préférences de vie privée.
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import NeighborhoodMapWrapper from '@/components/map/NeighborhoodMapWrapper';
 
 function memberSince(dateString) {
   const date = new Date(dateString);
@@ -32,7 +23,7 @@ export default async function VoisinsPage() {
 
   const { data: myProfile } = await supabase
     .from('profiles')
-    .select('quartier_id, quartiers(name, city, center_lat, center_lng)')
+    .select('quartier_id, quartiers(name, city)')
     .eq('user_id', user.id)
     .single();
 
@@ -54,19 +45,10 @@ export default async function VoisinsPage() {
     );
   }
 
-  // Périmètre du quartier + positions floutées des voisins, calculés
-  // côté base de données (voir migration 008) — on ne manipule ici que des
-  // coordonnées déjà anonymisées, jamais les adresses exactes.
-  const [{ data: boundary }, { data: mapPoints }] = await Promise.all([
-    supabase.rpc('get_quartier_boundary', { p_quartier_id: myProfile.quartier_id }),
-    supabase.rpc('get_neighborhood_map_points', { p_quartier_id: myProfile.quartier_id }),
-  ]);
-
-  // On respecte map_visibility = 'off' comme un choix général de discrétion,
-  // pas seulement pour la carte à venir : quelqu'un qui a explicitement
-  // demandé à ne pas apparaître ne doit pas se retrouver listé ici non plus.
-  // Limite à 50 : mesure simple anti-scraping (section 83) en attendant une
-  // vraie pagination si le quartier grossit.
+  // On respecte map_visibility = 'off' comme un choix général de discrétion :
+  // quelqu'un qui a explicitement demandé à ne pas apparaître ne doit pas se
+  // retrouver listé ici non plus. Limite à 50 : mesure simple anti-scraping
+  // (section 83) en attendant une vraie pagination si le quartier grossit.
   const { data: neighbors, error } = await supabase
     .from('profiles')
     .select('user_id, display_name, created_at, map_visibility')
@@ -83,15 +65,6 @@ export default async function VoisinsPage() {
           {myProfile.quartiers?.name} — {myProfile.quartiers?.city}
         </p>
       </div>
-
-      {myProfile.quartiers?.center_lat && (
-        <NeighborhoodMapWrapper
-          centerLat={myProfile.quartiers.center_lat}
-          centerLng={myProfile.quartiers.center_lng}
-          boundary={boundary}
-          points={mapPoints || []}
-        />
-      )}
 
       {error && (
         <p className="text-sm text-corail">Impossible de charger la liste pour le moment.</p>
