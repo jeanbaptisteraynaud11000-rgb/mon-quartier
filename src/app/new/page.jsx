@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { POST_TYPES } from '@/lib/postTypes';
@@ -21,6 +21,11 @@ export default function NewPostPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // Verrou synchrone en plus du state React : `submitting` ne se propage
+  // qu'au prochain rendu, ce qui laisse une fenêtre où un double-clic très
+  // rapide peut déclencher handleSubmit deux fois avant que le bouton ne
+  // soit visuellement désactivé. Une ref, elle, est lue/écrite immédiatement.
+  const hasSubmittedRef = useRef(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -50,11 +55,14 @@ export default function NewPostPage() {
     e.preventDefault();
     setError('');
 
+    if (hasSubmittedRef.current) return;
+
     if (!title.trim()) {
       setError('Le titre est obligatoire.');
       return;
     }
 
+    hasSubmittedRef.current = true;
     setSubmitting(true);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -77,6 +85,7 @@ export default function NewPostPage() {
     setSubmitting(false);
 
     if (insertError || !newPost) {
+      hasSubmittedRef.current = false;
       setError("Une erreur est survenue lors de la publication. Réessaie.");
       return;
     }

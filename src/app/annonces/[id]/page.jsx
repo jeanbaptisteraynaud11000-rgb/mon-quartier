@@ -19,7 +19,7 @@ export default async function AnnonceDetailPage({ params }) {
 
   const { data: post, error } = await supabase
     .from('posts')
-    .select('id, type, title, description, availability, approx_zone, created_at, user_id, profiles(display_name)')
+    .select('id, type, title, description, availability, approx_zone, created_at, user_id')
     .eq('id', id)
     .single();
 
@@ -27,8 +27,18 @@ export default async function AnnonceDetailPage({ params }) {
     notFound();
   }
 
+  // Requête séparée pour l'auteur : il n'existe pas de clé étrangère directe
+  // entre `posts` et `profiles` (les deux référencent `auth.users`
+  // séparément), donc une jointure imbriquée `profiles(...)` échouerait.
+  const { data: authorProfile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('user_id', post.user_id)
+    .single();
+
   const typeInfo = getPostTypeInfo(post.type);
   const isOwnPost = post.user_id === user.id;
+  const authorName = authorProfile?.display_name || 'Voisin';
 
   // Autres annonces du même auteur (hors celle-ci)
   const { data: otherPosts } = await supabase
@@ -54,7 +64,7 @@ export default async function AnnonceDetailPage({ params }) {
         <h1 className="mt-3 text-xl font-semibold text-content-primary">{post.title}</h1>
 
         <div className="mt-2 flex items-center gap-2 text-sm text-content-secondary">
-          <span>{post.profiles?.display_name || 'Voisin'}</span>
+          <span>{authorName}</span>
           <span>·</span>
           <span>{formatRelativeTime(post.created_at)}</span>
         </div>
@@ -92,7 +102,7 @@ export default async function AnnonceDetailPage({ params }) {
       {otherPosts?.length > 0 && (
         <div>
           <h2 className="mb-2 text-sm font-medium text-content-secondary">
-            Autres annonces de {post.profiles?.display_name || 'ce voisin'}
+            Autres annonces de {authorName}
           </h2>
           <div className="flex flex-col gap-2">
             {otherPosts.map((op) => (

@@ -40,7 +40,7 @@ export default async function AnnoncesPage({ searchParams }) {
 
   let query = supabase
     .from('posts')
-    .select('id, type, title, description, created_at, user_id, profiles(display_name)')
+    .select('id, type, title, description, created_at, user_id')
     .eq('quartier_id', profile.quartier_id)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
@@ -51,6 +51,18 @@ export default async function AnnoncesPage({ searchParams }) {
   }
 
   const { data: posts, error } = await query;
+
+  // Requête séparée pour récupérer les noms des auteurs (pas de clé
+  // étrangère directe entre posts et profiles, voir /annonces/[id]).
+  let authorNames = {};
+  if (posts?.length > 0) {
+    const userIds = [...new Set(posts.map((p) => p.user_id))];
+    const { data: authors } = await supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .in('user_id', userIds);
+    authorNames = Object.fromEntries((authors || []).map((a) => [a.user_id, a.display_name]));
+  }
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -105,7 +117,7 @@ export default async function AnnoncesPage({ searchParams }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm font-medium text-content-secondary">
-                    {post.profiles?.display_name || 'Voisin'}
+                    {authorNames[post.user_id] || 'Voisin'}
                   </span>
                   <span className="flex-shrink-0 text-xs text-content-secondary">
                     {formatRelativeTime(post.created_at)}
