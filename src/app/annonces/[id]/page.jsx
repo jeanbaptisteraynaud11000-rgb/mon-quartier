@@ -88,7 +88,9 @@ export default async function AnnonceDetailPage({ params }) {
         )}
       </div>
 
-      {!isOwnPost && <ContactActions postId={post.id} postTitle={post.title} />}
+      {!isOwnPost && (
+        <ContactActions postId={post.id} postAuthorId={post.user_id} postTitle={post.title} />
+      )}
 
       {isOwnPost && (
         <div className="rounded-card border border-border bg-surface-card p-4 text-center text-sm text-content-secondary">

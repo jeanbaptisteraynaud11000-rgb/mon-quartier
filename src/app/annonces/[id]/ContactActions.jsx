@@ -1,16 +1,36 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 
-// NOTE : "Contacter" et "Signaler" nécessitent respectivement la messagerie
-// (Phase 4) et la table `reports` + modération (Phase 5) — pas encore
-// construites à ce stade de la roadmap (voir section 75 du prompt maître).
-// On affiche honnêtement "bientôt disponible" plutôt que de faire semblant
-// que ça fonctionne. "Partager" est réellement fonctionnel dès maintenant
-// via la Web Share API du navigateur.
+// NOTE : "Signaler" nécessite la table `reports` + modération (Phase 5,
+// pas encore construite). "Contacter" et "Partager" sont pleinement
+// fonctionnels.
 
-export default function ContactActions({ postId, postTitle }) {
+export default function ContactActions({ postId, postAuthorId, postTitle }) {
+  const router = useRouter();
   const [notice, setNotice] = useState('');
+  const [contacting, setContacting] = useState(false);
+
+  async function handleContact() {
+    setContacting(true);
+    setNotice('');
+
+    const { data: conversationId, error } = await supabase.rpc('start_conversation', {
+      p_other_user_id: postAuthorId,
+      p_post_id: postId,
+    });
+
+    setContacting(false);
+
+    if (error || !conversationId) {
+      setNotice("Impossible de démarrer la conversation pour le moment.");
+      return;
+    }
+
+    router.push(`/messages/${conversationId}`);
+  }
 
   async function handleShare() {
     const url = window.location.href;
@@ -31,10 +51,11 @@ export default function ContactActions({ postId, postTitle }) {
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-3 gap-2">
         <button
-          onClick={() => setNotice('La messagerie arrive dans un prochain chantier.')}
-          className="h-tap rounded-pill border border-border font-medium text-content-primary transition-fast hover:bg-surface-card"
+          onClick={handleContact}
+          disabled={contacting}
+          className="h-tap rounded-pill border border-border font-medium text-content-primary transition-fast hover:bg-surface-card disabled:opacity-60"
         >
-          Contacter
+          {contacting ? '...' : 'Contacter'}
         </button>
         <button
           onClick={() => setNotice('Le signalement arrive dans un prochain chantier.')}
