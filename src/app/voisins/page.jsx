@@ -10,6 +10,7 @@
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import NeighborhoodMapWrapper from '@/components/map/NeighborhoodMapWrapper';
 
 function memberSince(dateString) {
   const date = new Date(dateString);
@@ -31,7 +32,7 @@ export default async function VoisinsPage() {
 
   const { data: myProfile } = await supabase
     .from('profiles')
-    .select('quartier_id, quartiers(name, city)')
+    .select('quartier_id, quartiers(name, city, center_lat, center_lng)')
     .eq('user_id', user.id)
     .single();
 
@@ -52,6 +53,14 @@ export default async function VoisinsPage() {
       </div>
     );
   }
+
+  // Périmètre du quartier + positions floutées des voisins, calculés
+  // côté base de données (voir migration 008) — on ne manipule ici que des
+  // coordonnées déjà anonymisées, jamais les adresses exactes.
+  const [{ data: boundary }, { data: mapPoints }] = await Promise.all([
+    supabase.rpc('get_quartier_boundary', { p_quartier_id: myProfile.quartier_id }),
+    supabase.rpc('get_neighborhood_map_points', { p_quartier_id: myProfile.quartier_id }),
+  ]);
 
   // On respecte map_visibility = 'off' comme un choix général de discrétion,
   // pas seulement pour la carte à venir : quelqu'un qui a explicitement
@@ -74,6 +83,15 @@ export default async function VoisinsPage() {
           {myProfile.quartiers?.name} — {myProfile.quartiers?.city}
         </p>
       </div>
+
+      {myProfile.quartiers?.center_lat && (
+        <NeighborhoodMapWrapper
+          centerLat={myProfile.quartiers.center_lat}
+          centerLng={myProfile.quartiers.center_lng}
+          boundary={boundary}
+          points={mapPoints || []}
+        />
+      )}
 
       {error && (
         <p className="text-sm text-corail">Impossible de charger la liste pour le moment.</p>

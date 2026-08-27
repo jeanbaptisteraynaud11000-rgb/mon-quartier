@@ -1,3 +1,41 @@
+#!/usr/bin/env bash
+set -e
+echo "Ajout du chantier #6 (carte du quartier)..."
+
+cat > "package.json" << 'MQEOF_PACKAGE_JSON'
+{
+  "name": "mon-quartier",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@supabase/supabase-js": "^2.45.0",
+    "@supabase/ssr": "^0.5.1",
+    "lucide-react": "^0.383.0",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.1"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.4",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5"
+  }
+}
+
+MQEOF_PACKAGE_JSON
+
+mkdir -p "src/app/onboarding"
+cat > "src/app/onboarding/page.jsx" << 'MQEOF_SRC_APP_ONBOARDING_PAGE_JSX'
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -331,3 +369,216 @@ function ScreenCard({ emoji, title, children }) {
   );
 }
 
+MQEOF_SRC_APP_ONBOARDING_PAGE_JSX
+
+mkdir -p "src/app/voisins"
+cat > "src/app/voisins/page.jsx" << 'MQEOF_SRC_APP_VOISINS_PAGE_JSX'
+// Server Component : annuaire des voisins du quartier.
+//
+// NOTE SUR LA PORTÉE : la vraie carte géographique interactive (section 7
+// du prompt maître) est volontairement laissée pour un chantier dédié —
+// elle nécessite une bibliothèque de cartographie (Leaflet/Mapbox) ET de
+// stocker les coordonnées approximatives de chaque utilisateur, qu'on ne
+// conserve pas encore aujourd'hui (seul le polygone du quartier existe).
+// Cette page couvre déjà la partie utile immédiatement : voir qui fait
+// partie de son quartier, dans le respect des préférences de vie privée.
+
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import NeighborhoodMapWrapper from '@/components/map/NeighborhoodMapWrapper';
+
+function memberSince(dateString) {
+  const date = new Date(dateString);
+  const diffMonths =
+    (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+
+  if (diffMonths < 1) return "arrivé(e) ce mois-ci";
+  if (diffMonths < 2) return 'membre depuis 1 mois';
+  if (diffMonths < 12) return `membre depuis ${Math.floor(diffMonths)} mois`;
+  const years = Math.floor(diffMonths / 12);
+  return `membre depuis ${years} an${years > 1 ? 's' : ''}`;
+}
+
+export default async function VoisinsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: myProfile } = await supabase
+    .from('profiles')
+    .select('quartier_id, quartiers(name, city, center_lat, center_lng)')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!myProfile?.quartier_id) {
+    return (
+      <div className="p-4">
+        <div className="rounded-card border border-border bg-surface-card p-6 text-center">
+          <p className="text-content-primary">
+            Termine d'abord ton inscription pour voir tes voisins.
+          </p>
+          <Link
+            href="/onboarding"
+            className="mt-4 inline-block h-tap rounded-pill bg-corail px-6 py-3 font-medium text-white transition-fast hover:bg-corail-hover"
+          >
+            Terminer mon inscription
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Périmètre du quartier + positions floutées des voisins, calculés
+  // côté base de données (voir migration 008) — on ne manipule ici que des
+  // coordonnées déjà anonymisées, jamais les adresses exactes.
+  const [{ data: boundary }, { data: mapPoints }] = await Promise.all([
+    supabase.rpc('get_quartier_boundary', { p_quartier_id: myProfile.quartier_id }),
+    supabase.rpc('get_neighborhood_map_points', { p_quartier_id: myProfile.quartier_id }),
+  ]);
+
+  // On respecte map_visibility = 'off' comme un choix général de discrétion,
+  // pas seulement pour la carte à venir : quelqu'un qui a explicitement
+  // demandé à ne pas apparaître ne doit pas se retrouver listé ici non plus.
+  // Limite à 50 : mesure simple anti-scraping (section 83) en attendant une
+  // vraie pagination si le quartier grossit.
+  const { data: neighbors, error } = await supabase
+    .from('profiles')
+    .select('user_id, display_name, created_at, map_visibility')
+    .eq('quartier_id', myProfile.quartier_id)
+    .neq('map_visibility', 'off')
+    .order('created_at', { ascending: true })
+    .limit(50);
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      <div>
+        <h1 className="text-xl font-semibold text-content-primary">Mes voisins</h1>
+        <p className="text-sm text-content-secondary">
+          {myProfile.quartiers?.name} — {myProfile.quartiers?.city}
+        </p>
+      </div>
+
+      {myProfile.quartiers?.center_lat && (
+        <NeighborhoodMapWrapper
+          centerLat={myProfile.quartiers.center_lat}
+          centerLng={myProfile.quartiers.center_lng}
+          boundary={boundary}
+          points={mapPoints || []}
+        />
+      )}
+
+      {error && (
+        <p className="text-sm text-corail">Impossible de charger la liste pour le moment.</p>
+      )}
+
+      {!error && neighbors?.length === 0 && (
+        <div className="rounded-card border border-border bg-surface-card p-6 text-center text-sm text-content-secondary">
+          Aucun voisin visible pour l'instant.
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {neighbors?.map((neighbor) => {
+          const isMe = neighbor.user_id === user.id;
+          const initial = (neighbor.display_name || '?').charAt(0).toUpperCase();
+          return (
+            <div
+              key={neighbor.user_id}
+              className="flex items-center gap-3 rounded-card border border-border bg-surface-card p-3"
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-pill bg-corail/10 font-semibold text-corail">
+                {initial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-content-primary">
+                  {neighbor.display_name || 'Voisin'} {isMe && '(toi)'}
+                </p>
+                <p className="text-xs text-content-secondary">
+                  {memberSince(neighbor.created_at)}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+MQEOF_SRC_APP_VOISINS_PAGE_JSX
+
+mkdir -p "src/components/map"
+cat > "src/components/map/NeighborhoodMap.jsx" << 'MQEOF_SRC_COMPONENTS_MAP_NEIGHBORHOODMAP_JSX'
+'use client';
+
+import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Icône personnalisée (cercle corail) plutôt que le pin par défaut de
+// Leaflet, dont les images cassent systématiquement avec les bundlers
+// modernes (Webpack/Next) sans configuration supplémentaire.
+const neighborIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:16px;height:16px;border-radius:50%;background:#FF5A5F;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+const boundaryStyle = {
+  color: '#FF5A5F',
+  weight: 2,
+  fillColor: '#FF5A5F',
+  fillOpacity: 0.05,
+};
+
+export default function NeighborhoodMap({ centerLat, centerLng, boundary, points }) {
+  return (
+    <MapContainer
+      center={[centerLat, centerLng]}
+      zoom={15}
+      scrollWheelZoom={false}
+      style={{ height: '280px', width: '100%', borderRadius: '1rem' }}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      {boundary && <GeoJSON data={boundary} style={boundaryStyle} />}
+
+      {points.map((point) => (
+        <Marker key={point.user_id} position={[point.lat, point.lng]} icon={neighborIcon}>
+          <Popup>{point.display_name || 'Voisin'}</Popup>
+        </Marker>
+      ))}
+    </MapContainer>
+  );
+}
+
+MQEOF_SRC_COMPONENTS_MAP_NEIGHBORHOODMAP_JSX
+
+mkdir -p "src/components/map"
+cat > "src/components/map/NeighborhoodMapWrapper.jsx" << 'MQEOF_SRC_COMPONENTS_MAP_NEIGHBORHOODMAPWRAPPER_JSX'
+'use client';
+
+import dynamic from 'next/dynamic';
+
+// Leaflet accède à `window`/`document` dès son import, ce qui casse le
+// rendu côté serveur de Next.js. `ssr: false` force ce composant à ne se
+// charger que dans le navigateur.
+const NeighborhoodMap = dynamic(() => import('./NeighborhoodMap'), {
+  ssr: false,
+  loading: () => <div className="skeleton" style={{ height: '280px', width: '100%' }} />,
+});
+
+export default function NeighborhoodMapWrapper(props) {
+  return <NeighborhoodMap {...props} />;
+}
+
+MQEOF_SRC_COMPONENTS_MAP_NEIGHBORHOODMAPWRAPPER_JSX
+
+echo "Chantier #6 ajoute avec succes."
+echo "IMPORTANT : lance npm install avant npm run dev (nouvelles dependances leaflet)"
+echo "Prochaine etape : npm install && git add -A && git commit -m \"chantier 6 : carte du quartier\" && git push"
