@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Ajout du chantier #4a (accueil reel)..."
+
+mkdir -p "src/app"
+cat > "src/app/page.jsx" << 'MQEOF_SRC_APP_PAGE_JSX'
 // Page d'accueil — Server Component : les données sont chargées côté
 // serveur avant l'envoi de la page (pas de flash de contenu vide, pas de
 // clé Supabase exposée côté client pour ces requêtes).
@@ -134,3 +140,7 @@ export default async function HomePage() {
   );
 }
 
+MQEOF_SRC_APP_PAGE_JSX
+
+echo "Chantier #4a ajoute avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"chantier 4a : accueil reel\" && git push"
