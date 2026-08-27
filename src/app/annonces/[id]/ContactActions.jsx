@@ -3,15 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-
-// NOTE : "Signaler" nécessite la table `reports` + modération (Phase 5,
-// pas encore construite). "Contacter" et "Partager" sont pleinement
-// fonctionnels.
+import ReportSheet from '@/components/ReportSheet';
 
 export default function ContactActions({ postId, postAuthorId, postTitle }) {
   const router = useRouter();
   const [notice, setNotice] = useState('');
   const [contacting, setContacting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   async function handleContact() {
     setContacting(true);
@@ -25,7 +23,9 @@ export default function ContactActions({ postId, postAuthorId, postTitle }) {
     setContacting(false);
 
     if (error || !conversationId) {
-      setNotice("Impossible de démarrer la conversation pour le moment.");
+      setNotice(error?.message?.includes('bloqu')
+        ? "Vous ne pouvez pas contacter cette personne."
+        : "Impossible de démarrer la conversation pour le moment.");
       return;
     }
 
@@ -58,7 +58,7 @@ export default function ContactActions({ postId, postAuthorId, postTitle }) {
           {contacting ? '...' : 'Contacter'}
         </button>
         <button
-          onClick={() => setNotice('Le signalement arrive dans un prochain chantier.')}
+          onClick={() => setReportOpen(true)}
           className="h-tap rounded-pill border border-border font-medium text-content-primary transition-fast hover:bg-surface-card"
         >
           Signaler
@@ -71,6 +71,13 @@ export default function ContactActions({ postId, postAuthorId, postTitle }) {
         </button>
       </div>
       {notice && <p className="text-center text-sm text-content-secondary">{notice}</p>}
+
+      <ReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="post"
+        targetId={postId}
+      />
     </div>
   );
 }

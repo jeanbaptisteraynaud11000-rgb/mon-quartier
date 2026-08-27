@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import ReportSheet from '@/components/ReportSheet';
 
 export default function ConversationPage() {
   const { id: conversationId } = useParams();
   const router = useRouter();
 
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [otherUserId, setOtherUserId] = useState(null);
   const [otherName, setOtherName] = useState('Voisin');
   const [postTitle, setPostTitle] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -17,6 +19,9 @@ export default function ConversationPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [sending, setSending] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   const bottomRef = useRef(null);
 
@@ -45,12 +50,21 @@ export default function ConversationPage() {
 
       const otherUserId = members.find((m) => m.user_id !== user.id)?.user_id;
       if (otherUserId) {
+        setOtherUserId(otherUserId);
         const { data: otherProfile } = await supabase
           .from('profiles')
           .select('display_name')
           .eq('user_id', otherUserId)
           .single();
         setOtherName(otherProfile?.display_name || 'Voisin');
+
+        const { data: existingBlock } = await supabase
+          .from('blocks')
+          .select('blocker_id')
+          .eq('blocker_id', user.id)
+          .eq('blocked_id', otherUserId)
+          .maybeSingle();
+        setBlocked(!!existingBlock);
       }
 
       const { data: conversation } = await supabase
@@ -127,6 +141,30 @@ export default function ConversationPage() {
     }
   }
 
+  async function handleBlock() {
+    if (!confirm(`Bloquer ${otherName} ? Vous ne pourrez plus échanger de messages.`)) return;
+    const { error } = await supabase.from('blocks').insert({
+      blocker_id: currentUserId,
+      blocked_id: otherUserId,
+    });
+    if (!error) {
+      setBlocked(true);
+      setMenuOpen(false);
+    }
+  }
+
+  async function handleUnblock() {
+    const { error } = await supabase
+      .from('blocks')
+      .delete()
+      .eq('blocker_id', currentUserId)
+      .eq('blocked_id', otherUserId);
+    if (!error) {
+      setBlocked(false);
+      setMenuOpen(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
@@ -146,9 +184,48 @@ export default function ConversationPage() {
   return (
     <div className="flex h-screen flex-col">
       <div className="border-b border-border bg-surface p-4">
-        <Link href="/messages" className="text-sm text-content-secondary">
-          ← Messages
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link href="/messages" className="text-sm text-content-secondary">
+            ← Messages
+          </Link>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Options"
+              className="flex h-tap w-tap items-center justify-center rounded-pill text-content-secondary hover:bg-surface-card"
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-card border border-border bg-surface py-1 shadow-soft">
+                <button
+                  onClick={() => {
+                    setReportOpen(true);
+                    setMenuOpen(false);
+                  }}
+                  className="block w-full px-4 py-2 text-left text-sm text-content-primary hover:bg-surface-card"
+                >
+                  Signaler
+                </button>
+                {blocked ? (
+                  <button
+                    onClick={handleUnblock}
+                    className="block w-full px-4 py-2 text-left text-sm text-content-primary hover:bg-surface-card"
+                  >
+                    Débloquer {otherName}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleBlock}
+                    className="block w-full px-4 py-2 text-left text-sm text-corail hover:bg-surface-card"
+                  >
+                    Bloquer {otherName}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
         <h1 className="mt-1 font-semibold text-content-primary">{otherName}</h1>
         {postTitle && (
           <p className="text-xs text-content-secondary">À propos de : {postTitle}</p>
@@ -176,22 +253,35 @@ export default function ConversationPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSend} className="safe-bottom flex gap-2 border-t border-border bg-surface p-3">
-        <input
-          type="text"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Écris un message..."
-          className="flex-1 rounded-pill border border-border bg-surface px-4 py-2 text-content-primary outline-none transition-fast focus:border-corail"
-        />
-        <button
-          type="submit"
-          disabled={sending || !content.trim()}
-          className="rounded-pill bg-corail px-5 py-2 font-medium text-white transition-fast hover:bg-corail-hover disabled:opacity-60"
-        >
-          Envoyer
-        </button>
-      </form>
+      {blocked ? (
+        <div className="safe-bottom border-t border-border bg-surface p-4 text-center text-sm text-content-secondary">
+          Tu as bloqué {otherName}. Débloque-la pour reprendre la conversation.
+        </div>
+      ) : (
+        <form onSubmit={handleSend} className="safe-bottom flex gap-2 border-t border-border bg-surface p-3">
+          <input
+            type="text"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Écris un message..."
+            className="flex-1 rounded-pill border border-border bg-surface px-4 py-2 text-content-primary outline-none transition-fast focus:border-corail"
+          />
+          <button
+            type="submit"
+            disabled={sending || !content.trim()}
+            className="rounded-pill bg-corail px-5 py-2 font-medium text-white transition-fast hover:bg-corail-hover disabled:opacity-60"
+          >
+            Envoyer
+          </button>
+        </form>
+      )}
+
+      <ReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="conversation"
+        targetId={conversationId}
+      />
     </div>
   );
 }

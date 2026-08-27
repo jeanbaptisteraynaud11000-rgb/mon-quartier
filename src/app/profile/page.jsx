@@ -3,7 +3,8 @@
 // Placeholder enrichi le temps du chantier auth/communauté — la vraie page
 // profil (avatar, bio, badges, stats...) sera construite au chantier dédié.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -13,6 +14,21 @@ export default function ProfilePage() {
   const [generating, setGenerating] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [role, setRole] = useState(null);
+
+  useEffect(() => {
+    async function loadRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      setRole(profile?.role);
+    }
+    loadRole();
+  }, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -99,6 +115,15 @@ export default function ProfilePage() {
 
         {inviteError && <p className="mt-2 text-sm text-corail">{inviteError}</p>}
       </div>
+
+      {(role === 'quartier_admin' || role === 'super_admin') && (
+        <Link
+          href="/admin"
+          className="block rounded-card border border-corail bg-corail/5 p-4 text-center font-medium text-corail transition-fast hover:bg-corail/10"
+        >
+          Administration →
+        </Link>
+      )}
 
       <button
         onClick={handleLogout}
