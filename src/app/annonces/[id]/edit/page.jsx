@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { POST_TYPES } from '@/lib/postTypes';
+import { getPostTypeInfo } from '@/lib/postTypes';
 
-export default function NewPostPage() {
+export default function EditPostPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialType = searchParams.get('type');
+  const { id } = useParams();
 
-  const [quartierId, setQuartierId] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [notFoundOrForbidden, setNotFoundOrForbidden] = useState(false);
+  const [type, setType] = useState(null);
 
-  const [selectedType, setSelectedType] = useState(initialType || null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [availability, setAvailability] = useState('');
@@ -23,28 +22,33 @@ export default function NewPostPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    async function loadProfile() {
+    async function loadPost() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('quartier_id')
-        .eq('user_id', user.id)
+
+      const { data: post, error: fetchError } = await supabase
+        .from('posts')
+        .select('id, type, title, description, availability, approx_zone, user_id')
+        .eq('id', id)
         .single();
 
-      if (!profile?.quartier_id) {
-        router.push('/onboarding');
+      // La policy RLS empêche déjà de lire l'annonce d'un autre quartier,
+      // mais on vérifie aussi explicitement que c'est bien SON annonce —
+      // un admin pourrait techniquement la voir sans en être l'auteur.
+      if (fetchError || !post || post.user_id !== user.id) {
+        setNotFoundOrForbidden(true);
+        setLoading(false);
         return;
       }
 
-      setQuartierId(profile.quartier_id);
-      setLoadingProfile(false);
+      setType(post.type);
+      setTitle(post.title);
+      setDescription(post.description || '');
+      setAvailability(post.availability || '');
+      setApproxZone(post.approx_zone || '');
+      setLoading(false);
     }
-    loadProfile();
-  }, [router]);
+    loadPost();
+  }, [id]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -57,34 +61,27 @@ export default function NewPostPage() {
 
     setSubmitting(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const { data: newPost, error: insertError } = await supabase
+    const { error: updateError } = await supabase
       .from('posts')
-      .insert({
-        user_id: user.id,
-        quartier_id: quartierId,
-        type: selectedType,
+      .update({
         title: title.trim(),
         description: description.trim() || null,
         availability: availability.trim() || null,
         approx_zone: approxZone.trim() || null,
-        status: 'active',
       })
-      .select('id')
-      .single();
+      .eq('id', id);
 
     setSubmitting(false);
 
-    if (insertError || !newPost) {
-      setError("Une erreur est survenue lors de la publication. Réessaie.");
+    if (updateError) {
+      setError("Une erreur est survenue. Réessaie.");
       return;
     }
 
-    router.push(`/annonces/${newPost.id}`);
+    router.push(`/annonces/${id}`);
   }
 
-  if (loadingProfile) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="skeleton h-4 w-40" />
@@ -92,42 +89,23 @@ export default function NewPostPage() {
     );
   }
 
-  // Étape 1 : choix du type (seulement si aucun type n'est déjà précisé
-  // dans l'URL — cas où l'utilisateur arrive directement sur /new).
-  if (!selectedType) {
+  if (notFoundOrForbidden) {
     return (
-      <div className="flex flex-col gap-3 p-6">
-        <h1 className="mb-2 text-xl font-semibold text-content-primary">
-          Que souhaitez-vous partager ?
-        </h1>
-        {POST_TYPES.map((cat) => (
-          <button
-            key={cat.type}
-            onClick={() => setSelectedType(cat.type)}
-            className="flex items-center gap-4 rounded-card border border-border bg-surface-card px-4 py-4 text-left transition-fast hover:bg-border/40 active:scale-[0.98]"
-          >
-            <span className="text-2xl">{cat.emoji}</span>
-            <span className="font-medium text-content-primary">{cat.label}</span>
-          </button>
-        ))}
+      <div className="p-6 text-center">
+        <p className="text-content-primary">
+          Cette annonce n'existe pas ou tu n'as pas le droit de la modifier.
+        </p>
       </div>
     );
   }
 
-  const typeInfo = POST_TYPES.find((t) => t.type === selectedType);
+  const typeInfo = getPostTypeInfo(type);
 
   return (
     <div className="p-6">
-      <button
-        onClick={() => setSelectedType(null)}
-        className="mb-4 text-sm font-medium text-content-secondary"
-      >
-        ← Changer de catégorie
-      </button>
-
       <div className="mb-6 flex items-center gap-2">
         <span className="text-2xl">{typeInfo?.emoji}</span>
-        <h1 className="text-xl font-semibold text-content-primary">{typeInfo?.label}</h1>
+        <h1 className="text-xl font-semibold text-content-primary">Modifier l'annonce</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -142,7 +120,6 @@ export default function NewPostPage() {
             maxLength={100}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex : Perceuse à prêter"
             className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
           />
         </div>
@@ -157,7 +134,6 @@ export default function NewPostPage() {
             maxLength={1000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Donne quelques détails utiles..."
             className="w-full resize-none rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
           />
         </div>
@@ -172,7 +148,6 @@ export default function NewPostPage() {
             maxLength={100}
             value={availability}
             onChange={(e) => setAvailability(e.target.value)}
-            placeholder="Ex : le week-end, en soirée..."
             className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
           />
         </div>
@@ -187,13 +162,9 @@ export default function NewPostPage() {
             maxLength={100}
             value={approxZone}
             onChange={(e) => setApproxZone(e.target.value)}
-            placeholder="Ex : proche de la mairie"
             className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
           />
         </div>
-
-        {/* NOTE : upload de photos prévu dans un chantier dédié (Storage,
-            validation MIME/taille, sections 56-57 du prompt maître). */}
 
         {error && <p className="text-sm text-corail">{error}</p>}
 
@@ -202,7 +173,7 @@ export default function NewPostPage() {
           disabled={submitting}
           className="mt-2 h-tap w-full rounded-pill bg-corail font-medium text-white transition-fast hover:bg-corail-hover disabled:opacity-60"
         >
-          {submitting ? 'Publication...' : 'Publier gratuitement'}
+          {submitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
         </button>
       </form>
     </div>
