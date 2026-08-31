@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Ajout PWA (3/3) : liens profil, pages erreur..."
+
+mkdir -p "src/app/profile"
+cat > "src/app/profile/page.jsx" << 'MQEOF_SRC_APP_PROFILE_PAGE_JSX'
 'use client';
 
 // Placeholder enrichi le temps du chantier auth/communauté — la vraie page
@@ -172,3 +178,57 @@ export default function ProfilePage() {
   );
 }
 
+MQEOF_SRC_APP_PROFILE_PAGE_JSX
+
+mkdir -p "src/app"
+cat > "src/app/not-found.jsx" << 'MQEOF_SRC_APP_NOT-FOUND_JSX'
+import Link from 'next/link';
+
+export default function NotFound() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+      <div className="text-4xl">🧭</div>
+      <h1 className="mt-4 text-xl font-semibold text-content-primary">Page introuvable</h1>
+      <p className="mt-2 text-sm text-content-secondary">
+        Cette page n'existe pas ou plus.
+      </p>
+      <Link
+        href="/"
+        className="mt-6 inline-block h-tap rounded-pill bg-corail px-6 py-3 font-medium text-white transition-fast hover:bg-corail-hover"
+      >
+        Retour à l'accueil
+      </Link>
+    </div>
+  );
+}
+
+MQEOF_SRC_APP_NOT-FOUND_JSX
+
+mkdir -p "src/app"
+cat > "src/app/error.jsx" << 'MQEOF_SRC_APP_ERROR_JSX'
+'use client';
+
+export default function Error({ reset }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+      <div className="text-4xl">😕</div>
+      <h1 className="mt-4 text-xl font-semibold text-content-primary">
+        Une erreur est survenue
+      </h1>
+      <p className="mt-2 text-sm text-content-secondary">
+        Ce n'est pas ta faute — réessaie dans un instant.
+      </p>
+      <button
+        onClick={reset}
+        className="mt-6 h-tap rounded-pill bg-corail px-6 py-3 font-medium text-white transition-fast hover:bg-corail-hover"
+      >
+        Réessayer
+      </button>
+    </div>
+  );
+}
+
+MQEOF_SRC_APP_ERROR_JSX
+
+echo "PWA (3/3) ajoutee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"pwa 3/3 : liens profil + pages erreur\" && git push"
