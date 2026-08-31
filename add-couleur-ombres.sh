@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Ajout de couleur et d'ombres douces sur l'accueil..."
+
+mkdir -p "src/app"
+cat > "src/app/page.jsx" << 'MQEOF_SRC_APP_PAGE_JSX'
 // Page d'accueil — Server Component.
 //
 // Direction visuelle : structure épurée façon Airbnb (grandes zones photo,
@@ -303,3 +309,7 @@ export default async function HomePage() {
   );
 }
 
+MQEOF_SRC_APP_PAGE_JSX
+
+echo "Couleur et ombres ajoutees avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"accueil : couleur + ombres douces\" && git push"
