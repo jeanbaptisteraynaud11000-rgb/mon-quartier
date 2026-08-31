@@ -165,12 +165,18 @@ export default function ProfilePage() {
         <StatBlock value={stats.eventsJoined} label="participations" href="/activites" />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <Link
           href="/mes-annonces"
           className="rounded-card border border-border bg-surface-card p-3 text-center text-sm font-medium text-content-primary shadow-soft hover:bg-border/20"
         >
           Mes annonces
+        </Link>
+        <Link
+          href="/favoris"
+          className="rounded-card border border-border bg-surface-card p-3 text-center text-sm font-medium text-content-primary shadow-soft hover:bg-border/20"
+        >
+          Mes favoris
         </Link>
         <Link
           href="/settings"

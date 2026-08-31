@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import ReportSheet from '@/components/ReportSheet';
 
-export default function ContactActions({ postId, postAuthorId, postTitle }) {
+// NOTE : le partage a été déplacé dans PostHeaderActions (icône en overlay
+// sur la photo). Ici il ne reste que Contacter et Signaler.
+
+export default function ContactActions({ postId, postAuthorId }) {
   const router = useRouter();
   const [notice, setNotice] = useState('');
   const [contacting, setContacting] = useState(false);
@@ -32,42 +35,21 @@ export default function ContactActions({ postId, postAuthorId, postTitle }) {
     router.push(`/messages/${conversationId}`);
   }
 
-  async function handleShare() {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: postTitle, url });
-      } catch {
-        // L'utilisateur a annulé le partage — rien à faire.
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      setNotice('Lien copié !');
-      setTimeout(() => setNotice(''), 2000);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex gap-2">
         <button
           onClick={handleContact}
           disabled={contacting}
-          className="h-tap rounded-pill border border-border font-medium text-content-primary transition-fast hover:bg-surface-card disabled:opacity-60"
+          className="h-tap flex-1 rounded-pill bg-vert font-medium text-white transition-fast hover:opacity-90 disabled:opacity-60"
         >
           {contacting ? '...' : 'Contacter'}
         </button>
         <button
           onClick={() => setReportOpen(true)}
-          className="h-tap rounded-pill border border-border font-medium text-content-primary transition-fast hover:bg-surface-card"
+          className="h-tap rounded-pill border border-border px-4 font-medium text-content-secondary transition-fast hover:bg-surface-card"
         >
           Signaler
-        </button>
-        <button
-          onClick={handleShare}
-          className="h-tap rounded-pill border border-border font-medium text-content-primary transition-fast hover:bg-surface-card"
-        >
-          Partager
         </button>
       </div>
       {notice && <p className="text-center text-sm text-content-secondary">{notice}</p>}
