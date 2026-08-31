@@ -4,6 +4,7 @@
 // requête retourne simplement "non trouvé", jamais les données.
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
@@ -36,7 +37,18 @@ export default async function AnnonceDetailPage({ params }) {
     .eq('user_id', post.user_id)
     .single();
 
+  const { data: images } = await supabase
+    .from('post_images')
+    .select('storage_path, position')
+    .eq('post_id', post.id)
+    .order('position', { ascending: true });
+
+  const photoUrls = (images || []).map(
+    (img) => supabase.storage.from('posts').getPublicUrl(img.storage_path).data.publicUrl
+  );
+
   const typeInfo = getPostTypeInfo(post.type);
+  const TypeIcon = typeInfo.icon;
   const isOwnPost = post.user_id === user.id;
   const authorName = authorProfile?.display_name || 'Voisin';
 
@@ -55,9 +67,21 @@ export default async function AnnonceDetailPage({ params }) {
         ← Retour aux annonces
       </Link>
 
+      {photoUrls.length > 0 && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4">
+          {photoUrls.map((url, i) => (
+            <div key={i} className="relative h-56 w-full flex-shrink-0 overflow-hidden rounded-card bg-surface-card">
+              <Image src={url} alt="" fill sizes="100vw" className="object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="rounded-card border border-border bg-surface-card p-5">
         <div className="flex items-center gap-2">
-          <span className="text-xl">{typeInfo.emoji}</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-pill bg-surface text-content-primary">
+            <TypeIcon size={16} />
+          </span>
           <span className="text-sm font-medium text-content-secondary">{typeInfo.label}</span>
         </div>
 
@@ -107,15 +131,18 @@ export default async function AnnonceDetailPage({ params }) {
             Autres annonces de {authorName}
           </h2>
           <div className="flex flex-col gap-2">
-            {otherPosts.map((op) => (
-              <Link
-                key={op.id}
-                href={`/annonces/${op.id}`}
-                className="rounded-card border border-border bg-surface-card p-3 text-sm text-content-primary transition-fast hover:bg-border/30"
-              >
-                {getPostTypeInfo(op.type).emoji} {op.title}
-              </Link>
-            ))}
+            {otherPosts.map((op) => {
+              const OpIcon = getPostTypeInfo(op.type).icon;
+              return (
+                <Link
+                  key={op.id}
+                  href={`/annonces/${op.id}`}
+                  className="flex items-center gap-2 rounded-card border border-border bg-surface-card p-3 text-sm text-content-primary transition-fast hover:bg-border/30"
+                >
+                  <OpIcon size={16} /> {op.title}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

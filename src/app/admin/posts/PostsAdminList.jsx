@@ -73,10 +73,11 @@ export default function PostsAdminList() {
       <div className="flex flex-col gap-2">
         {posts.map((post) => {
           const typeInfo = getPostTypeInfo(post.type);
+          const Icon = typeInfo.icon;
           return (
             <div key={post.id} className="rounded-card border border-border bg-surface-card p-4">
               <div className="flex items-center justify-between text-sm text-content-secondary">
-                <span>{typeInfo.emoji} {typeInfo.label}</span>
+                <span className="flex items-center gap-1.5"><Icon size={14} /> {typeInfo.label}</span>
                 <span>{formatRelativeTime(post.created_at)}</span>
               </div>
               <Link href={`/annonces/${post.id}`} className="mt-1 block font-medium text-content-primary">

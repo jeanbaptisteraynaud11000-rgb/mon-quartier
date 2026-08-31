@@ -115,20 +115,23 @@ export default async function HomePage() {
 
       {/* Catégories — rangée horizontale, plus adaptée à 5 items qu'une grille 2x2 */}
       <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-        {POST_TYPES.map((cat) => (
-          <Link
-            key={cat.type}
-            href={`/annonces?type=${cat.type}`}
-            className="flex flex-shrink-0 flex-col items-center gap-2 transition-fast active:scale-95"
-          >
-            <div
-              className={`flex h-14 w-14 items-center justify-center rounded-pill text-2xl ${CATEGORY_COLORS[cat.type]}`}
+        {POST_TYPES.map((cat) => {
+          const Icon = cat.icon;
+          return (
+            <Link
+              key={cat.type}
+              href={`/annonces?type=${cat.type}`}
+              className="flex flex-shrink-0 flex-col items-center gap-2 transition-fast active:scale-95"
             >
-              {cat.emoji}
-            </div>
-            <span className="text-xs font-medium text-content-primary">{cat.label}</span>
-          </Link>
-        ))}
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-pill ${CATEGORY_COLORS[cat.type]}`}
+              >
+                <Icon size={24} />
+              </div>
+              <span className="text-xs font-medium text-content-primary">{cat.label}</span>
+            </Link>
+          );
+        })}
       </section>
 
       {/* Vie du quartier — fil d'activité réelle, pas de mécanique sociale */}
@@ -153,6 +156,7 @@ export default async function HomePage() {
           <div className="flex flex-col gap-2">
             {feed.map((post) => {
               const typeInfo = getPostTypeInfo(post.type);
+              const Icon = typeInfo.icon;
               const isAlert = post.type === 'alerte';
               return (
                 <Link
@@ -163,9 +167,9 @@ export default async function HomePage() {
                   }`}
                 >
                   <div
-                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-pill text-lg ${CATEGORY_COLORS[post.type]}`}
+                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-pill ${CATEGORY_COLORS[post.type]}`}
                   >
-                    {typeInfo.emoji}
+                    <Icon size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">

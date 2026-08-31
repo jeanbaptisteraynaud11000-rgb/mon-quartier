@@ -1,16 +1,18 @@
 // Constantes partagées entre /annonces, /new et /annonces/[id] pour garder
 // les libellés et emojis cohérents partout dans l'app.
 
+import { Gift, Handshake, Car, Search, AlertTriangle } from 'lucide-react';
+
 export const POST_TYPES = [
-  { type: 'don', label: 'Prêt / Don', emoji: '🎁' },
-  { type: 'entraide', label: 'Entraide', emoji: '🤝' },
-  { type: 'covoiturage', label: 'Covoiturage', emoji: '🚗' },
-  { type: 'cherche', label: 'Je cherche', emoji: '🔎' },
-  { type: 'alerte', label: 'Alerte quartier', emoji: '⚠️' },
+  { type: 'don', label: 'Prêt / Don', icon: Gift },
+  { type: 'entraide', label: 'Entraide', icon: Handshake },
+  { type: 'covoiturage', label: 'Covoiturage', icon: Car },
+  { type: 'cherche', label: 'Je cherche', icon: Search },
+  { type: 'alerte', label: 'Alerte quartier', icon: AlertTriangle },
 ];
 
 export function getPostTypeInfo(type) {
-  return POST_TYPES.find((t) => t.type === type) || { label: type, emoji: '📌' };
+  return POST_TYPES.find((t) => t.type === type) || { label: type, icon: Search };
 }
 
 // Formatage relatif simple en français, sans dépendance externe.

@@ -104,7 +104,9 @@ export default function EditPostPage() {
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center gap-2">
-        <span className="text-2xl">{typeInfo?.emoji}</span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-surface-card text-content-primary">
+          {typeInfo && <typeInfo.icon size={20} />}
+        </span>
         <h1 className="text-xl font-semibold text-content-primary">Modifier l'annonce</h1>
       </div>
 

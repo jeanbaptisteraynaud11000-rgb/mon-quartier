@@ -123,11 +123,12 @@ export default function MesAnnoncesPage() {
       <div className="flex flex-col gap-3">
         {posts.map((post) => {
           const typeInfo = getPostTypeInfo(post.type);
+          const Icon = typeInfo.icon;
           return (
             <div key={post.id} className="rounded-card border border-border bg-surface-card p-4">
               <Link href={`/annonces/${post.id}`} className="block">
                 <div className="flex items-center gap-2 text-sm text-content-secondary">
-                  <span>{typeInfo.emoji}</span>
+                  <Icon size={14} />
                   <span>{typeInfo.label}</span>
                   <span>·</span>
                   <span>{formatRelativeTime(post.created_at)}</span>

@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { POST_TYPES } from '@/lib/postTypes';
+import { X } from 'lucide-react';
+
+const MAX_PHOTOS = 5;
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5 Mo, aligné sur la limite du bucket
 
 export default function NewPostPage() {
   const router = useRouter();
@@ -18,6 +22,9 @@ export default function NewPostPage() {
   const [description, setDescription] = useState('');
   const [availability, setAvailability] = useState('');
   const [approxZone, setApproxZone] = useState('');
+
+  const [photos, setPhotos] = useState([]); // [{ file, previewUrl }]
+  const [photoError, setPhotoError] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +58,52 @@ export default function NewPostPage() {
     loadProfile();
   }, [router]);
 
+  // Nettoyage des URLs de prévisualisation à la destruction du composant,
+  // pour ne pas accumuler de fuite mémoire côté navigateur.
+  useEffect(() => {
+    return () => {
+      photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    };
+  }, [photos]);
+
+  function handlePhotoSelect(e) {
+    const files = Array.from(e.target.files || []);
+    setPhotoError('');
+
+    const accepted = ['image/jpeg', 'image/png', 'image/webp'];
+    const valid = [];
+
+    for (const file of files) {
+      if (!accepted.includes(file.type)) {
+        setPhotoError('Seules les images JPEG, PNG ou WebP sont acceptées.');
+        continue;
+      }
+      if (file.size > MAX_PHOTO_SIZE) {
+        setPhotoError('Chaque photo doit faire moins de 5 Mo.');
+        continue;
+      }
+      valid.push(file);
+    }
+
+    setPhotos((prev) => {
+      const combined = [...prev, ...valid.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))];
+      if (combined.length > MAX_PHOTOS) {
+        setPhotoError(`Maximum ${MAX_PHOTOS} photos.`);
+        return combined.slice(0, MAX_PHOTOS);
+      }
+      return combined;
+    });
+
+    e.target.value = ''; // permet de re-sélectionner le même fichier après suppression
+  }
+
+  function removePhoto(index) {
+    setPhotos((prev) => {
+      URL.revokeObjectURL(prev[index].previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -82,14 +135,37 @@ export default function NewPostPage() {
       .select('id')
       .single();
 
-    setSubmitting(false);
-
     if (insertError || !newPost) {
+      setSubmitting(false);
       hasSubmittedRef.current = false;
       setError("Une erreur est survenue lors de la publication. Réessaie.");
       return;
     }
 
+    // Upload des photos APRÈS la création de l'annonce (on a besoin de son
+    // id pour construire le chemin de stockage et satisfaire la policy RLS
+    // du bucket). Un échec d'upload ne bloque pas la publication : l'annonce
+    // existe déjà, on affiche juste un avertissement.
+    if (photos.length > 0) {
+      for (let i = 0; i < photos.length; i++) {
+        const { file } = photos[i];
+        const ext = file.name.split('.').pop();
+        const randomName = `${crypto.randomUUID()}.${ext}`;
+        const path = `${newPost.id}/${randomName}`;
+
+        const { error: uploadError } = await supabase.storage.from('posts').upload(path, file);
+
+        if (!uploadError) {
+          await supabase.from('post_images').insert({
+            post_id: newPost.id,
+            storage_path: path,
+            position: i,
+          });
+        }
+      }
+    }
+
+    setSubmitting(false);
     router.push(`/annonces/${newPost.id}`);
   }
 
@@ -109,16 +185,21 @@ export default function NewPostPage() {
         <h1 className="mb-2 text-xl font-semibold text-content-primary">
           Que souhaitez-vous partager ?
         </h1>
-        {POST_TYPES.map((cat) => (
-          <button
-            key={cat.type}
-            onClick={() => setSelectedType(cat.type)}
-            className="flex items-center gap-4 rounded-card border border-border bg-surface-card px-4 py-4 text-left transition-fast hover:bg-border/40 active:scale-[0.98]"
-          >
-            <span className="text-2xl">{cat.emoji}</span>
-            <span className="font-medium text-content-primary">{cat.label}</span>
-          </button>
-        ))}
+        {POST_TYPES.map((cat) => {
+          const Icon = cat.icon;
+          return (
+            <button
+              key={cat.type}
+              onClick={() => setSelectedType(cat.type)}
+              className="flex items-center gap-4 rounded-card border border-border bg-surface-card px-4 py-4 text-left transition-fast hover:bg-border/40 active:scale-[0.98]"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-surface text-content-primary">
+                <Icon size={20} />
+              </span>
+              <span className="font-medium text-content-primary">{cat.label}</span>
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -135,7 +216,9 @@ export default function NewPostPage() {
       </button>
 
       <div className="mb-6 flex items-center gap-2">
-        <span className="text-2xl">{typeInfo?.emoji}</span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-surface-card text-content-primary">
+          {typeInfo && <typeInfo.icon size={20} />}
+        </span>
         <h1 className="text-xl font-semibold text-content-primary">{typeInfo?.label}</h1>
       </div>
 
@@ -172,6 +255,50 @@ export default function NewPostPage() {
         </div>
 
         <div>
+          <label className="mb-1 block text-sm font-medium text-content-primary">
+            Photos <span className="text-content-secondary">(optionnel, {MAX_PHOTOS} max)</span>
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            {photos.map((photo, i) => (
+              <div key={i} className="relative h-20 w-20 overflow-hidden rounded-card bg-surface-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.previewUrl} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  aria-label="Retirer la photo"
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-pill bg-black/60 text-white"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+
+            {photos.length < MAX_PHOTOS && (
+              <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-card border border-dashed border-border text-content-secondary transition-fast hover:bg-surface-card">
+                <span className="text-xl">+</span>
+                <span className="text-[10px]">Ajouter</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          {photoError && <p className="mt-1 text-xs text-corail">{photoError}</p>}
+
+          <p className="mt-2 text-xs text-content-secondary">
+            Attention à ne pas montrer d'informations personnelles (adresse complète, plaque
+            d'immatriculation...) sur tes photos.
+          </p>
+        </div>
+
+        <div>
           <label htmlFor="availability" className="mb-1 block text-sm font-medium text-content-primary">
             Disponibilité <span className="text-content-secondary">(optionnel)</span>
           </label>
@@ -200,9 +327,6 @@ export default function NewPostPage() {
             className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
           />
         </div>
-
-        {/* NOTE : upload de photos prévu dans un chantier dédié (Storage,
-            validation MIME/taille, sections 56-57 du prompt maître). */}
 
         {error && <p className="text-sm text-corail">{error}</p>}
 
