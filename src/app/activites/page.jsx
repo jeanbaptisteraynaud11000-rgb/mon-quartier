@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { EVENT_CATEGORIES, getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
+import EventCardMenu from './EventCardMenu';
 
 export default async function ActivitesPage({ searchParams }) {
   const params = await searchParams;
@@ -55,14 +56,19 @@ export default async function ActivitesPage({ searchParams }) {
   const { data: events, error } = await query;
 
   let attendeeCounts = {};
+  let organizerInfo = {};
   if (events?.length > 0) {
-    const { data: attendees } = await supabase
-      .from('event_attendees')
-      .select('event_id')
-      .in('event_id', events.map((e) => e.id));
+    const [{ data: attendees }, { data: organizers }] = await Promise.all([
+      supabase.from('event_attendees').select('event_id').in('event_id', events.map((e) => e.id)),
+      supabase
+        .from('profiles')
+        .select('user_id, display_name, photo_url, photo_visible')
+        .in('user_id', [...new Set(events.map((e) => e.user_id))]),
+    ]);
     for (const a of attendees || []) {
       attendeeCounts[a.event_id] = (attendeeCounts[a.event_id] || 0) + 1;
     }
+    organizerInfo = Object.fromEntries((organizers || []).map((o) => [o.user_id, o]));
   }
 
   return (
@@ -115,33 +121,57 @@ export default async function ActivitesPage({ searchParams }) {
           const catInfo = getEventCategoryInfo(event.category);
           const count = attendeeCounts[event.id] || 0;
           const isFull = count >= event.max_attendees;
+          const organizer = organizerInfo[event.user_id];
+          const isOrganizer = event.user_id === user.id;
+
           return (
-            <Link
-              key={event.id}
-              href={`/activites/${event.id}`}
-              className="flex gap-3 rounded-card border border-border bg-surface-card p-4 shadow-soft transition-fast hover:bg-border/20 active:scale-[0.99]"
-            >
-              <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-card">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={getPlaceholderImage(event.category)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+            <div key={event.id} className="rounded-card border border-border bg-surface-card p-3 shadow-soft">
+              <div className="flex gap-3">
+                <Link href={`/activites/${event.id}`} className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-card">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={getPlaceholderImage(event.category)}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </Link>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link href={`/activites/${event.id}`} className="flex min-w-0 items-center gap-1.5">
+                      <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-pill bg-vert/10 text-[9px] font-semibold text-vert">
+                        {organizer?.photo_visible && organizer?.photo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={organizer.photo_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          (organizer?.display_name || '?').charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <span className="truncate text-xs font-medium text-content-secondary">
+                        {organizer?.display_name || 'Voisin'} · {formatEventDate(event.event_date)}
+                      </span>
+                    </Link>
+                    <EventCardMenu eventId={event.id} isOrganizer={isOrganizer} />
+                  </div>
+
+                  <Link href={`/activites/${event.id}`}>
+                    <p className="mt-1 font-semibold text-content-primary">{event.title}</p>
+                    {event.location && (
+                      <p className="mt-0.5 truncate text-sm text-content-secondary">{event.location}</p>
+                    )}
+                  </Link>
+
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className="rounded-pill bg-surface px-2 py-0.5 text-[11px] font-medium text-content-secondary">
+                      {catInfo.label}
+                    </span>
+                    <span className={`text-[11px] font-medium ${isFull ? 'text-corail' : 'text-content-secondary'}`}>
+                      {isFull ? 'Complet' : `${count} / ${event.max_attendees} places`}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-content-secondary">
-                  {formatEventDate(event.event_date)} · {catInfo.label}
-                </p>
-                <p className="mt-0.5 font-semibold text-content-primary">{event.title}</p>
-                {event.location && (
-                  <p className="mt-0.5 truncate text-sm text-content-secondary">{event.location}</p>
-                )}
-                <p className={`mt-1 text-xs font-medium ${isFull ? 'text-corail' : 'text-content-secondary'}`}>
-                  {isFull ? 'Complet' : `${count} / ${event.max_attendees} places`}
-                </p>
-              </div>
-            </Link>
+            </div>
           );
         })}
       </div>

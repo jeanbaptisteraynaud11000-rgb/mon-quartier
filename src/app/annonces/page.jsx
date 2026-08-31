@@ -2,10 +2,11 @@
 // filtrable par type via ?type=don|entraide|covoiturage|cherche|alerte.
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
-import { POST_TYPES, formatRelativeTime } from '@/lib/postTypes';
+import { POST_TYPES, getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
+import { Heart } from 'lucide-react';
+import PostCardMenu from './PostCardMenu';
 
 export default async function AnnoncesPage({ searchParams }) {
   const params = await searchParams;
@@ -42,7 +43,7 @@ export default async function AnnoncesPage({ searchParams }) {
 
   let query = supabase
     .from('posts')
-    .select('id, type, title, description, created_at, user_id')
+    .select('id, type, title, description, approx_zone, created_at, user_id')
     .eq('quartier_id', profile.quartier_id)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
@@ -54,35 +55,38 @@ export default async function AnnoncesPage({ searchParams }) {
 
   const { data: posts, error } = await query;
 
-  // Requêtes séparées : pas de clé étrangère directe posts → profiles, et
-  // on récupère seulement la 1ère photo de chaque annonce pour la vignette.
-  let authorNames = {};
+  // Requêtes séparées : pas de clé étrangère directe posts → profiles.
+  let authorInfo = {};
   let thumbnailByPost = {};
+  let favoriteCounts = {};
   if (posts?.length > 0) {
     const userIds = [...new Set(posts.map((p) => p.user_id))];
     const postIds = posts.map((p) => p.id);
 
-    const [{ data: authors }, { data: images }] = await Promise.all([
-      supabase.from('profiles').select('user_id, display_name').in('user_id', userIds),
+    const [{ data: authors }, { data: images }, { data: counts }] = await Promise.all([
+      supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible').in('user_id', userIds),
       supabase
         .from('post_images')
         .select('post_id, storage_path, position')
         .in('post_id', postIds)
         .order('position', { ascending: true }),
+      supabase.rpc('get_favorite_counts', { p_post_ids: postIds }),
     ]);
 
-    authorNames = Object.fromEntries((authors || []).map((a) => [a.user_id, a.display_name]));
+    authorInfo = Object.fromEntries((authors || []).map((a) => [a.user_id, a]));
 
     for (const img of images || []) {
       if (!thumbnailByPost[img.post_id]) {
         thumbnailByPost[img.post_id] = supabase.storage.from('posts').getPublicUrl(img.storage_path).data.publicUrl;
       }
     }
+
+    favoriteCounts = Object.fromEntries((counts || []).map((c) => [c.post_id, c.count]));
   }
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      {/* Filtres de catégorie — mêmes images que l'accueil, grille 2 lignes */}
+      {/* Filtres de catégorie */}
       <div className="grid grid-cols-3 gap-2">
         <FilterTile href="/annonces" label="Toutes" active={!activeType} />
         {POST_TYPES.map((cat) => (
@@ -120,35 +124,69 @@ export default async function AnnoncesPage({ searchParams }) {
 
       <div className="flex flex-col gap-3">
         {posts?.map((post) => {
+          const typeInfo = getPostTypeInfo(post.type);
           const thumbnail = thumbnailByPost[post.id] || getPlaceholderImage(post.type);
+          const author = authorInfo[post.user_id];
+          const isOwnPost = post.user_id === user.id;
+          const favCount = favoriteCounts[post.id] || 0;
+
           return (
-            <Link
+            <div
               key={post.id}
-              href={`/annonces/${post.id}`}
-              className="flex gap-3 rounded-card border border-border bg-surface-card p-4 shadow-soft transition-fast hover:bg-border/30 active:scale-[0.99]"
+              className="flex gap-3 rounded-card border border-border bg-surface-card p-3 shadow-soft"
             >
-              <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-card bg-surface">
-                <Image src={thumbnail} alt="" fill sizes="56px" className="object-cover" />
-              </div>
+              <Link href={`/annonces/${post.id}`} className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-card bg-surface">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={thumbnail} alt="" className="h-full w-full object-cover" />
+              </Link>
+
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium text-content-secondary">
-                    {authorNames[post.user_id] || 'Voisin'}
-                  </span>
-                  <span className="flex-shrink-0 text-xs text-content-secondary">
-                    {formatRelativeTime(post.created_at)}
-                  </span>
+                  <Link href={`/annonces/${post.id}`} className="flex min-w-0 items-center gap-1.5">
+                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-pill bg-corail/10 text-[9px] font-semibold text-corail">
+                      {author?.photo_visible && author?.photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={author.photo_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        (author?.display_name || '?').charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <span className="truncate text-xs font-medium text-content-secondary">
+                      {author?.display_name || 'Voisin'} · {formatRelativeTime(post.created_at)}
+                    </span>
+                  </Link>
+                  <PostCardMenu postId={post.id} isOwnPost={isOwnPost} />
                 </div>
-                <p className="mt-0.5 truncate font-semibold text-content-primary">
-                  {post.title}
-                </p>
-                {post.description && (
-                  <p className="mt-0.5 line-clamp-2 text-sm text-content-secondary">
-                    {post.description}
-                  </p>
-                )}
+
+                <Link href={`/annonces/${post.id}`}>
+                  <p className="mt-1 truncate font-semibold text-content-primary">{post.title}</p>
+                  {post.description && (
+                    <p className="mt-0.5 line-clamp-2 text-sm text-content-secondary">
+                      {post.description}
+                    </p>
+                  )}
+                </Link>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="flex-shrink-0 rounded-pill bg-surface px-2 py-0.5 text-[11px] font-medium text-content-secondary">
+                      {typeInfo.label}
+                    </span>
+                    {post.approx_zone && (
+                      <span className="truncate text-[11px] text-content-secondary">
+                        {post.approx_zone}
+                      </span>
+                    )}
+                  </div>
+                  {favCount > 0 && (
+                    <span className="flex flex-shrink-0 items-center gap-1 text-xs text-content-secondary">
+                      <Heart size={13} />
+                      {favCount}
+                    </span>
+                  )}
+                </div>
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
