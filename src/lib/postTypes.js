@@ -6,6 +6,7 @@ export const POST_TYPES = [
   { type: 'entraide', label: 'Entraide', emoji: '🤝' },
   { type: 'covoiturage', label: 'Covoiturage', emoji: '🚗' },
   { type: 'cherche', label: 'Je cherche', emoji: '🔎' },
+  { type: 'alerte', label: 'Alerte quartier', emoji: '⚠️' },
 ];
 
 export function getPostTypeInfo(type) {

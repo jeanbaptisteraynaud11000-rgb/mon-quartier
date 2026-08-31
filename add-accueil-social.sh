@@ -1,3 +1,124 @@
+#!/usr/bin/env bash
+set -e
+echo "Refonte accueil + type alerte quartier..."
+
+mkdir -p "src/lib"
+cat > "src/lib/postTypes.js" << 'MQEOF_SRC_LIB_POSTTYPES_JS'
+// Constantes partagées entre /annonces, /new et /annonces/[id] pour garder
+// les libellés et emojis cohérents partout dans l'app.
+
+export const POST_TYPES = [
+  { type: 'don', label: 'Prêt / Don', emoji: '🎁' },
+  { type: 'entraide', label: 'Entraide', emoji: '🤝' },
+  { type: 'covoiturage', label: 'Covoiturage', emoji: '🚗' },
+  { type: 'cherche', label: 'Je cherche', emoji: '🔎' },
+  { type: 'alerte', label: 'Alerte quartier', emoji: '⚠️' },
+];
+
+export function getPostTypeInfo(type) {
+  return POST_TYPES.find((t) => t.type === type) || { label: type, emoji: '📌' };
+}
+
+// Formatage relatif simple en français, sans dépendance externe.
+export function formatRelativeTime(dateString) {
+  const date = new Date(dateString);
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return "à l'instant";
+  if (diffMin < 60) return `il y a ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `il y a ${diffH} h`;
+  const diffJ = Math.floor(diffH / 24);
+  if (diffJ < 7) return `il y a ${diffJ} j`;
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+MQEOF_SRC_LIB_POSTTYPES_JS
+
+mkdir -p "src/components/layout"
+cat > "src/components/layout/CreateSheet.jsx" << 'MQEOF_SRC_COMPONENTS_LAYOUT_CREATESHEET_JSX'
+'use client';
+
+import { useEffect } from 'react';
+import Link from 'next/link';
+import { X } from 'lucide-react';
+
+const OPTIONS = [
+  { emoji: '🎁', label: 'Prêt / Don', type: 'don' },
+  { emoji: '🤝', label: 'Entraide', type: 'entraide' },
+  { emoji: '🚗', label: 'Covoiturage', type: 'covoiturage' },
+  { emoji: '🔎', label: 'Je cherche', type: 'cherche' },
+  { emoji: '⚠️', label: 'Alerte quartier', type: 'alerte' },
+];
+
+export default function CreateSheet({ open, onClose }) {
+  // Empêche le scroll du fond quand la sheet est ouverte
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Créer une publication">
+      {/* Overlay */}
+      <button
+        aria-label="Fermer"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 transition-fast"
+      />
+
+      {/* Sheet */}
+      <div className="safe-bottom absolute bottom-0 left-0 right-0 animate-in slide-in-from-bottom rounded-t-sheet bg-surface p-6 shadow-sheet">
+        <div className="mx-auto mb-4 h-1 w-10 rounded-pill bg-border" />
+
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-content-primary">
+            Que souhaitez-vous partager ?
+          </h2>
+          <button
+            aria-label="Fermer"
+            onClick={onClose}
+            className="flex h-tap w-tap items-center justify-center rounded-pill text-content-secondary hover:bg-surface-card"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {OPTIONS.map((option) => (
+            <Link
+              key={option.type}
+              href={`/new?type=${option.type}`}
+              onClick={onClose}
+              className="flex items-center gap-4 rounded-card bg-surface-card px-4 py-4 transition-fast hover:bg-border/60 active:scale-[0.98]"
+            >
+              <span className="text-2xl" aria-hidden="true">
+                {option.emoji}
+              </span>
+              <span className="text-base font-medium text-content-primary">
+                {option.label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+MQEOF_SRC_COMPONENTS_LAYOUT_CREATESHEET_JSX
+
+mkdir -p "src/app"
+cat > "src/app/page.jsx" << 'MQEOF_SRC_APP_PAGE_JSX'
 // Page d'accueil — Server Component.
 //
 // Parti pris UX : on montre un vrai fil d'activité récente du quartier
@@ -208,3 +329,7 @@ function StatPill({ emoji, value, label, href }) {
   );
 }
 
+MQEOF_SRC_APP_PAGE_JSX
+
+echo "Refonte accueil appliquee avec succes."
+echo "Prochaine etape : executer la migration 014, puis git add -A && git commit -m \"accueil : feed vie du quartier + alertes\" && git push"

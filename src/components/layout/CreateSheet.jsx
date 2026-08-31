@@ -9,6 +9,7 @@ const OPTIONS = [
   { emoji: '🤝', label: 'Entraide', type: 'entraide' },
   { emoji: '🚗', label: 'Covoiturage', type: 'covoiturage' },
   { emoji: '🔎', label: 'Je cherche', type: 'cherche' },
+  { emoji: '⚠️', label: 'Alerte quartier', type: 'alerte' },
 ];
 
 export default function CreateSheet({ open, onClose }) {
