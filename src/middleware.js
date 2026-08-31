@@ -23,7 +23,12 @@ const PUBLIC_ROUTE_PREFIXES = [
   '/forgot-password',
   '/reset-password',
   '/email-confirmation',
-  '/auth', // /auth/callback, futurs endpoints d'auth
+  '/auth',
+  '/offline',
+  '/confidentialite',
+  '/cgu',
+  '/mentions-legales',
+  '/cookies',
 ];
 
 function isPublicRoute(pathname) {
