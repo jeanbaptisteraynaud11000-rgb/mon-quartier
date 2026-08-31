@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Grille fixe 2x2 pour Pres de chez toi..."
+
+mkdir -p "src/app"
+cat > "src/app/page.jsx" << 'MQEOF_SRC_APP_PAGE_JSX'
 // Page d'accueil — Server Component.
 //
 // Direction visuelle : peu de couleur (le corail/vert de la marque
@@ -284,3 +290,7 @@ export default async function HomePage() {
   );
 }
 
+MQEOF_SRC_APP_PAGE_JSX
+
+echo "Grille appliquee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"accueil : grille fixe 2x2 sans scroll\" && git push"
