@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
+import { getPlaceholderImage } from '@/lib/placeholderImages';
 
 const JOIN_ERROR_MESSAGES = {
   invalid: "Cette activité n'existe plus.",
@@ -135,6 +136,11 @@ export default function ActivityDetailPage() {
       <Link href="/activites" className="text-sm font-medium text-content-secondary">
         ← Retour aux activités
       </Link>
+
+      <div className="relative h-40 w-full overflow-hidden rounded-card bg-surface-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={getPlaceholderImage(event.category)} alt="" className="h-full w-full object-cover" />
+      </div>
 
       <div className="rounded-card border border-border bg-surface-card p-5">
         {isCancelled && (

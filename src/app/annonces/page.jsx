@@ -4,7 +4,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
-import { POST_TYPES, getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
+import { POST_TYPES, formatRelativeTime } from '@/lib/postTypes';
+import { getPlaceholderImage } from '@/lib/placeholderImages';
 
 export default async function AnnoncesPage({ searchParams }) {
   const params = await searchParams;
@@ -120,24 +121,16 @@ export default async function AnnoncesPage({ searchParams }) {
 
       <div className="flex flex-col gap-3">
         {posts?.map((post) => {
-          const typeInfo = getPostTypeInfo(post.type);
-          const Icon = typeInfo.icon;
-          const thumbnail = thumbnailByPost[post.id];
+          const thumbnail = thumbnailByPost[post.id] || getPlaceholderImage(post.type);
           return (
             <Link
               key={post.id}
               href={`/annonces/${post.id}`}
               className="flex gap-3 rounded-card border border-border bg-surface-card p-4 shadow-soft transition-fast hover:bg-border/30 active:scale-[0.99]"
             >
-              {thumbnail ? (
-                <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-card bg-surface">
-                  <Image src={thumbnail} alt="" fill sizes="56px" className="object-cover" />
-                </div>
-              ) : (
-                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-card bg-surface text-content-primary">
-                  <Icon size={22} />
-                </div>
-              )}
+              <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-card bg-surface">
+                <Image src={thumbnail} alt="" fill sizes="56px" className="object-cover" />
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm font-medium text-content-secondary">

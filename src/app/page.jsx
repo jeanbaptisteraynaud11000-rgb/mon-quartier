@@ -1,21 +1,36 @@
 // Page d'accueil — Server Component.
 //
-// Direction visuelle : structure épurée façon Airbnb (grandes zones photo,
-// hiérarchie typographique nette, beaucoup d'espace), mais avec un peu plus
-// de couleur et de relief qu'en V1 — icônes de catégories teintées
-// corail/vert avec une ombre douce, cartes légèrement surélevées
-// (shadow-soft, déjà dans le design system depuis le début).
+// Direction visuelle : pastilles de catégories pleinement colorées,
+// cartes horizontales avec vraies photos (illustration générique en
+// secours), pile d'avatars pour les activités et les voisins.
 //
 // Volontairement exclu (cohérent avec la section 80 du prompt maître) :
-// pas de "vu par X personnes", pas de tri algorithmique par popularité,
-// pas de notification-appât. Le fil reste chronologique, l'app reste utile
-// plutôt qu'accrocheuse.
+// pas de notation/étoiles (aucun système d'avis n'existe côté base), pas
+// de tri algorithmique par popularité, pas de notification-appât.
 
 import Link from 'next/link';
 import { Search, Users, Store } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { POST_TYPES, getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
-import { getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
+import { formatEventDate } from '@/lib/eventCategories';
+import { getPlaceholderImage } from '@/lib/placeholderImages';
+import AvatarStack from '@/components/AvatarStack';
+
+const POST_ATTRIBUTION = {
+  don: 'Don par',
+  entraide: 'Entraide proposée par',
+  covoiturage: 'Covoiturage par',
+  cherche: 'Recherché par',
+};
+
+function formatEventDateBadge(dateString) {
+  const date = new Date(dateString);
+  return {
+    day: date.toLocaleDateString('fr-FR', { weekday: 'short' }).toUpperCase().replace('.', ''),
+    date: date.getDate(),
+    month: date.toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase().replace('.', ''),
+  };
+}
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -51,58 +66,62 @@ export default async function HomePage() {
   const quartierId = profile.quartier_id;
   const firstName = profile.display_name?.split(' ')[0] || null;
 
-  const [neighborsCount, featuredAlertResult, feedResult, upcomingEventsResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('quartier_id', quartierId),
-    supabase
-      .from('posts')
-      .select('id, title, created_at, user_id')
-      .eq('quartier_id', quartierId)
-      .eq('status', 'active')
-      .eq('type', 'alerte')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from('posts')
-      .select('id, type, title, created_at, user_id')
-      .eq('quartier_id', quartierId)
-      .eq('status', 'active')
-      .neq('type', 'alerte')
-      .order('created_at', { ascending: false })
-      .limit(4),
-    supabase
-      .from('events')
-      .select('id, category, title, event_date, max_attendees')
-      .eq('quartier_id', quartierId)
-      .eq('status', 'active')
-      .gte('event_date', new Date().toISOString())
-      .order('event_date', { ascending: true })
-      .limit(4),
-  ]);
+  const [neighborsCount, featuredAlertResult, feedResult, upcomingEventsResult, neighborPreviewResult] =
+    await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('quartier_id', quartierId),
+      supabase
+        .from('posts')
+        .select('id, title, created_at, user_id')
+        .eq('quartier_id', quartierId)
+        .eq('status', 'active')
+        .eq('type', 'alerte')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('posts')
+        .select('id, type, title, created_at, user_id')
+        .eq('quartier_id', quartierId)
+        .eq('status', 'active')
+        .neq('type', 'alerte')
+        .order('created_at', { ascending: false })
+        .limit(4),
+      supabase
+        .from('events')
+        .select('id, category, title, location, event_date, max_attendees')
+        .eq('quartier_id', quartierId)
+        .eq('status', 'active')
+        .gte('event_date', new Date().toISOString())
+        .order('event_date', { ascending: true })
+        .limit(3),
+      supabase
+        .from('profiles')
+        .select('user_id, display_name, photo_url, photo_visible')
+        .eq('quartier_id', quartierId)
+        .neq('map_visibility', 'off')
+        .limit(4),
+    ]);
 
   const featuredAlert = featuredAlertResult.data;
   const feed = feedResult.data || [];
   const upcomingEvents = upcomingEventsResult.data || [];
+  const neighborPreview = neighborPreviewResult.data || [];
 
-  // Requêtes séparées : pas de FK directe posts/events → profiles, et on
-  // récupère la 1ère photo de chaque annonce pour l'illustration de carte.
   const relevantUserIds = [
     ...new Set([featuredAlert?.user_id, ...feed.map((p) => p.user_id)].filter(Boolean)),
   ];
   const feedPostIds = feed.map((p) => p.id);
+  const eventIds = upcomingEvents.map((e) => e.id);
 
-  const [{ data: authors }, { data: images }, { data: attendees }] = await Promise.all([
+  const [{ data: authors }, { data: images }, { data: attendeeRows }] = await Promise.all([
     relevantUserIds.length > 0
       ? supabase.from('profiles').select('user_id, display_name').in('user_id', relevantUserIds)
       : Promise.resolve({ data: [] }),
     feedPostIds.length > 0
       ? supabase.from('post_images').select('post_id, storage_path, position').in('post_id', feedPostIds).order('position', { ascending: true })
       : Promise.resolve({ data: [] }),
-    upcomingEvents.length > 0
-      ? supabase.from('event_attendees').select('event_id').in('event_id', upcomingEvents.map((e) => e.id))
+    eventIds.length > 0
+      ? supabase.from('event_attendees').select('event_id, user_id').in('event_id', eventIds)
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -115,23 +134,30 @@ export default async function HomePage() {
     }
   }
 
-  const attendeeCounts = {};
-  for (const a of attendees || []) {
-    attendeeCounts[a.event_id] = (attendeeCounts[a.event_id] || 0) + 1;
+  // Profils des participants pour la pile d'avatars de chaque activité.
+  const attendeeUserIds = [...new Set((attendeeRows || []).map((a) => a.user_id))];
+  const { data: attendeeProfiles } =
+    attendeeUserIds.length > 0
+      ? await supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible').in('user_id', attendeeUserIds)
+      : { data: [] };
+  const attendeeProfileById = Object.fromEntries((attendeeProfiles || []).map((p) => [p.user_id, p]));
+
+  const attendeesByEvent = {};
+  for (const row of attendeeRows || []) {
+    if (!attendeesByEvent[row.event_id]) attendeesByEvent[row.event_id] = [];
+    const p = attendeeProfileById[row.user_id];
+    if (p) attendeesByEvent[row.event_id].push(p);
   }
 
   return (
     <div className="flex flex-col p-4">
       <h1 className="text-xl font-semibold text-content-primary">
-        {firstName ? `Bonjour ${firstName}` : 'Bonjour'}
+        {firstName ? `Bonjour ${firstName} 👋` : 'Bonjour 👋'}
       </h1>
       <p className="mt-1 text-sm text-content-secondary">
-        Voici ce qui se passe près de chez toi.
+        Ravi de te revoir dans ton quartier.
       </p>
 
-      {/* Barre de recherche — pour l'instant amène simplement aux annonces ;
-          une vraie recherche (annonces + voisins) est prévue dans un
-          prochain chantier (section 46 du prompt maître). */}
       <Link
         href="/annonces"
         className="mt-5 flex items-center gap-3 rounded-pill border border-border bg-surface-card px-4 py-3 shadow-soft transition-fast hover:shadow-none"
@@ -140,37 +166,33 @@ export default async function HomePage() {
         <span className="text-sm text-content-secondary">Rechercher dans le quartier</span>
       </Link>
 
-      {/* Catégories — icônes teintées corail/vert, légère ombre */}
-      <div className="-mx-4 mt-6 flex gap-5 overflow-x-auto px-4 pb-1">
+      {/* Catégories — pastilles pleinement colorées */}
+      <div className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-1">
         {POST_TYPES.map((cat, i) => {
           const Icon = cat.icon;
-          const tint = i % 2 === 0 ? 'bg-corail/10 text-corail' : 'bg-vert/10 text-vert';
+          const solid = i % 2 === 0 ? 'bg-corail text-white' : 'bg-vert text-white';
           return (
             <Link
               key={cat.type}
               href={`/annonces?type=${cat.type}`}
-              className="flex flex-shrink-0 flex-col items-center gap-2 transition-fast active:scale-95"
+              className={`flex flex-shrink-0 items-center gap-1.5 rounded-pill px-3.5 py-2 text-xs font-medium shadow-soft transition-fast active:scale-95 ${solid}`}
             >
-              <div className={`flex h-12 w-12 items-center justify-center rounded-pill shadow-soft ${tint}`}>
-                <Icon size={20} />
-              </div>
-              <span className="text-xs font-medium text-content-primary">{cat.label}</span>
+              <Icon size={14} />
+              {cat.label}
             </Link>
           );
         })}
       </div>
 
-      {/* Alerte la plus récente — pleine largeur, mise en avant */}
+      {/* Alerte la plus récente */}
       {featuredAlert && (
         <Link
           href={`/annonces/${featuredAlert.id}`}
-          className="mt-6 flex items-start gap-3 rounded-card bg-amber-50 p-4 shadow-soft transition-fast hover:shadow-none"
+          className="mt-5 flex items-center gap-3 rounded-card bg-corail/10 p-4 shadow-soft transition-fast hover:shadow-none"
         >
-          <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-pill bg-amber-100 text-amber-700">
-            {(() => {
-              const AlertIcon = getPostTypeInfo('alerte').icon;
-              return <AlertIcon size={16} />;
-            })()}
+          <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-pill">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={getPlaceholderImage('alerte')} alt="" className="h-full w-full object-cover" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-content-primary">{featuredAlert.title}</p>
@@ -182,53 +204,41 @@ export default async function HomePage() {
         </Link>
       )}
 
-      {/* Fil "Près de chez toi" — même format carte que les activités */}
+      {/* Près de chez toi — cartes horizontales avec vraie photo */}
       {feed.length > 0 && (
-        <section className="mt-8">
+        <section className="mt-7">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-base font-semibold text-content-primary">Près de chez toi</h2>
+            <Link href="/annonces" className="text-xs text-content-secondary">
+              Voir tout
+            </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {feed.map((post, i) => {
-              const typeInfo = getPostTypeInfo(post.type);
-              const Icon = typeInfo.icon;
-              const thumbnail = thumbnailByPost[post.id];
-              const tint = i % 2 === 0 ? 'bg-corail/10 text-corail' : 'bg-vert/10 text-vert';
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+            {feed.map((post) => {
+              const thumbnail = thumbnailByPost[post.id] || getPlaceholderImage(post.type);
+              const attribution = POST_ATTRIBUTION[post.type] || 'Publié par';
               return (
-                <Link key={post.id} href={`/annonces/${post.id}`}>
-                  <div className="relative h-24 w-full overflow-hidden rounded-card bg-surface-card shadow-soft">
-                    {thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumbnail} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className={`flex h-full w-full items-center justify-center ${tint}`}>
-                        <Icon size={24} />
-                      </div>
-                    )}
+                <Link key={post.id} href={`/annonces/${post.id}`} className="w-40 flex-shrink-0">
+                  <div className="relative h-28 w-full overflow-hidden rounded-card bg-surface-card shadow-soft">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={thumbnail} alt="" className="h-full w-full object-cover" />
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm font-medium text-content-primary">
                     {post.title}
                   </p>
                   <p className="mt-0.5 text-xs text-content-secondary">
-                    {authorName[post.user_id] || 'Voisin'} · {formatRelativeTime(post.created_at)}
+                    {attribution} {authorName[post.user_id] || 'Voisin'}
                   </p>
                 </Link>
               );
             })}
           </div>
-
-          <Link
-            href="/annonces"
-            className="mt-4 block w-full rounded-pill border border-border py-2.5 text-center text-sm font-medium text-content-primary transition-fast hover:border-content-secondary"
-          >
-            Voir plus
-          </Link>
         </section>
       )}
 
       {feed.length === 0 && !featuredAlert && (
-        <div className="mt-8 rounded-card border border-border bg-surface-card p-6 text-center text-sm text-content-secondary">
+        <div className="mt-7 rounded-card border border-border bg-surface-card p-6 text-center text-sm text-content-secondary">
           Rien de nouveau pour l'instant.
           <div className="mt-2">
             <Link href="/new" className="font-medium text-corail">
@@ -238,33 +248,43 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* Prochaines activités */}
+      {/* Prochaines activités — badge date + pile de participants */}
       {upcomingEvents.length > 0 && (
-        <section className="mt-8">
+        <section className="mt-7">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-base font-semibold text-content-primary">Prochaines activités</h2>
             <Link href="/activites" className="text-xs text-content-secondary">
-              Tout voir
+              Voir tout
             </Link>
           </div>
 
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+          <div className="flex flex-col gap-3">
             {upcomingEvents.map((event) => {
-              const catInfo = getEventCategoryInfo(event.category);
-              const Icon = catInfo.icon;
-              const count = attendeeCounts[event.id] || 0;
-              const isFull = count >= event.max_attendees;
+              const badge = formatEventDateBadge(event.event_date);
+              const attendees = attendeesByEvent[event.id] || [];
               return (
-                <Link key={event.id} href={`/activites/${event.id}`} className="w-40 flex-shrink-0">
-                  <div className="flex h-24 w-full items-center justify-center rounded-card bg-vert/10 text-vert shadow-soft">
-                    <Icon size={24} />
+                <Link
+                  key={event.id}
+                  href={`/activites/${event.id}`}
+                  className="flex gap-3 rounded-card border border-border bg-surface-card p-3 shadow-soft transition-fast hover:shadow-none"
+                >
+                  <div className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-card bg-surface">
+                    <span className="text-[10px] font-medium text-corail">{badge.day}</span>
+                    <span className="text-lg font-semibold leading-none text-content-primary">{badge.date}</span>
+                    <span className="text-[10px] text-content-secondary">{badge.month}</span>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-sm font-medium text-content-primary">
-                    {event.title}
-                  </p>
-                  <p className={`mt-0.5 text-xs ${isFull ? 'text-corail' : 'text-content-secondary'}`}>
-                    {formatEventDate(event.event_date)} · {isFull ? 'Complet' : `${count}/${event.max_attendees}`}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-content-primary">{event.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-content-secondary">
+                      {new Date(event.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {event.location ? ` · ${event.location}` : ''}
+                    </p>
+                    {attendees.length > 0 && (
+                      <div className="mt-1.5">
+                        <AvatarStack people={attendees} size={20} />
+                      </div>
+                    )}
+                  </div>
                 </Link>
               );
             })}
@@ -272,33 +292,44 @@ export default async function HomePage() {
         </section>
       )}
 
-      <Link
-        href="/commerces"
-        className="mt-3 flex items-center justify-between rounded-card border border-border bg-surface-card p-4 shadow-soft transition-fast hover:shadow-none"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-pill bg-corail/10 text-corail">
-            <Store size={17} />
+      {/* Résumé communauté — deux cartes avec illustration de fond */}
+      <div className="mt-7 grid grid-cols-2 gap-3">
+        <Link
+          href="/voisins"
+          className="relative flex h-32 flex-col justify-end overflow-hidden rounded-card p-3 shadow-soft"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={getPlaceholderImage('communaute')}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+          <div className="relative">
+            <AvatarStack people={neighborPreview} size={22} />
+            <p className="mt-1.5 text-xs font-medium text-white">
+              {neighborsCount.count ?? 0} voisins peuvent aider
+            </p>
           </div>
-          <span className="text-sm text-content-primary">Commerces & lieux du quartier</span>
-        </div>
-        <span className="text-xs text-content-secondary">Voir</span>
-      </Link>
+        </Link>
 
-      <Link
-        href="/voisins"
-        className="mt-3 flex items-center justify-between rounded-card border border-border bg-surface-card p-4 shadow-soft transition-fast hover:shadow-none"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-pill bg-vert/10 text-vert">
-            <Users size={17} />
+        <Link
+          href="/commerces"
+          className="relative flex h-32 flex-col justify-end overflow-hidden rounded-card p-3 shadow-soft"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={getPlaceholderImage('commerce')}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+          <div className="relative flex items-center gap-1.5">
+            <Store size={14} className="text-white" />
+            <p className="text-xs font-medium text-white">Soutenons nos commerces</p>
           </div>
-          <span className="text-sm text-content-primary">
-            {neighborsCount.count ?? 0} voisin{(neighborsCount.count ?? 0) > 1 ? 's' : ''} dans ce quartier
-          </span>
-        </div>
-        <span className="text-xs text-content-secondary">Voir</span>
-      </Link>
+        </Link>
+      </div>
     </div>
   );
 }

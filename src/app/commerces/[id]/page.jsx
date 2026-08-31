@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPlaceCategoryInfo } from '@/lib/placeCategories';
+import { getPlaceholderImage } from '@/lib/placeholderImages';
 
 export default async function PlaceDetailPage({ params }) {
   const { id } = await params;
@@ -12,7 +13,7 @@ export default async function PlaceDetailPage({ params }) {
 
   const { data: place, error } = await supabase
     .from('places')
-    .select('id, category, name, description, address, phone, website, added_by')
+    .select('id, category, name, description, address, phone, website, added_by, photo_url')
     .eq('id', id)
     .single();
 
@@ -28,6 +29,15 @@ export default async function PlaceDetailPage({ params }) {
       <Link href="/commerces" className="text-sm font-medium text-content-secondary">
         ← Retour
       </Link>
+
+      <div className="relative h-44 w-full overflow-hidden rounded-card bg-surface-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={place.photo_url || getPlaceholderImage(place.category)}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      </div>
 
       <div className="rounded-card border border-border bg-surface-card p-5">
         <div className="flex items-center gap-2">

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { PLACE_CATEGORIES } from '@/lib/placeCategories';
 
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
+
 export default function NewPlacePage() {
   const router = useRouter();
 
@@ -25,6 +27,29 @@ export default function NewPlacePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const hasSubmittedRef = useRef(false);
+
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoError, setPhotoError] = useState('');
+
+  function handlePhotoSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError('');
+
+    const accepted = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!accepted.includes(file.type)) {
+      setPhotoError('Format accepté : JPEG, PNG ou WebP.');
+      return;
+    }
+    if (file.size > MAX_PHOTO_SIZE) {
+      setPhotoError('La photo doit faire moins de 5 Mo.');
+      return;
+    }
+
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
 
   useEffect(() => {
     async function loadProfile() {
@@ -120,6 +145,16 @@ export default function NewPlacePage() {
       return;
     }
 
+    if (photoFile) {
+      const ext = photoFile.name.split('.').pop();
+      const path = `${newPlace.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('places').upload(path, photoFile);
+      if (!uploadError) {
+        const publicUrl = supabase.storage.from('places').getPublicUrl(path).data.publicUrl;
+        await supabase.from('places').update({ photo_url: publicUrl }).eq('id', newPlace.id);
+      }
+    }
+
     router.push(`/commerces/${newPlace.id}`);
   }
 
@@ -157,6 +192,30 @@ export default function NewPlacePage() {
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-content-primary">
+            Photo <span className="text-content-secondary">(optionnel)</span>
+          </label>
+          {photoPreview ? (
+            <div className="relative h-32 w-full overflow-hidden rounded-card">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+            </div>
+          ) : (
+            <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-card border border-dashed border-border text-content-secondary transition-fast hover:bg-surface-card">
+              <span className="text-xl">+</span>
+              <span className="text-xs">Ajouter une photo</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoSelect}
+                className="hidden"
+              />
+            </label>
+          )}
+          {photoError && <p className="mt-1 text-xs text-corail">{photoError}</p>}
         </div>
 
         <div>

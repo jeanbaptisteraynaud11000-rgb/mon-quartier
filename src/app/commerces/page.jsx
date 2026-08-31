@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { PLACE_CATEGORIES, getPlaceCategoryInfo } from '@/lib/placeCategories';
 import { sortByDistance, formatDistance } from '@/lib/distanceCalculator';
+import { getPlaceholderImage } from '@/lib/placeholderImages';
 
 export default function CommercesPage() {
   const [places, setPlaces] = useState([]);
@@ -31,7 +32,7 @@ export default function CommercesPage() {
 
       const { data } = await supabase
         .from('places')
-        .select('id, category, name, description, address, lat, lng')
+        .select('id, category, name, description, address, lat, lng, photo_url')
         .eq('quartier_id', profile.quartier_id)
         .order('created_at', { ascending: false });
 
@@ -133,7 +134,6 @@ export default function CommercesPage() {
       <div className="flex flex-col gap-2">
         {sorted.map((place) => {
           const catInfo = getPlaceCategoryInfo(place.category);
-          const Icon = catInfo.icon;
           const distance = place._distance !== undefined ? formatDistance(place._distance) : null;
           return (
             <Link
@@ -141,8 +141,13 @@ export default function CommercesPage() {
               href={`/commerces/${place.id}`}
               className="flex items-center gap-3 rounded-card border border-border bg-surface-card p-3 transition-fast hover:bg-border/20"
             >
-              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-pill bg-surface text-content-secondary">
-                <Icon size={19} />
+              <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-pill">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={place.photo_url || getPlaceholderImage(place.category)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-content-primary">{place.name}</p>

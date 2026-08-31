@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
+import { getPlaceholderImage } from '@/lib/placeholderImages';
 
 export default async function ActivitesPage() {
   const supabase = await createClient();
@@ -88,7 +89,6 @@ export default async function ActivitesPage() {
       <div className="flex flex-col gap-3">
         {events?.map((event) => {
           const catInfo = getEventCategoryInfo(event.category);
-          const Icon = catInfo.icon;
           const count = attendeeCounts[event.id] || 0;
           const isFull = count >= event.max_attendees;
           return (
@@ -97,8 +97,13 @@ export default async function ActivitesPage() {
               href={`/activites/${event.id}`}
               className="flex gap-3 rounded-card border border-border bg-surface-card p-4 shadow-soft transition-fast hover:bg-border/20 active:scale-[0.99]"
             >
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-pill bg-vert/10 text-vert">
-                <Icon size={22} />
+              <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getPlaceholderImage(event.category)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-content-secondary">

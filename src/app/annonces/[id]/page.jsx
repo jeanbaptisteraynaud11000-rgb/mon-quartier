@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
+import { getPlaceholderImage } from '@/lib/placeholderImages';
 import { getLevel } from '@/lib/levels';
 import ContactActions from './ContactActions';
 
@@ -68,13 +69,17 @@ export default async function AnnonceDetailPage({ params }) {
         ← Retour aux annonces
       </Link>
 
-      {photoUrls.length > 0 && (
+      {photoUrls.length > 0 ? (
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4">
           {photoUrls.map((url, i) => (
             <div key={i} className="relative h-56 w-full flex-shrink-0 overflow-hidden rounded-card bg-surface-card">
               <Image src={url} alt="" fill sizes="100vw" className="object-cover" />
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="relative h-48 w-full overflow-hidden rounded-card bg-surface-card">
+          <Image src={getPlaceholderImage(post.type)} alt="" fill sizes="100vw" className="object-cover" />
         </div>
       )}
 
