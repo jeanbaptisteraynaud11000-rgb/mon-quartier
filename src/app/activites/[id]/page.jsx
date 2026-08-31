@@ -38,7 +38,7 @@ export default function ActivityDetailPage() {
 
     const { data: ev, error } = await supabase
       .from('events')
-      .select('id, category, title, description, location, event_date, max_attendees, status, user_id')
+      .select('id, category, title, description, location, event_date, max_attendees, status, user_id, photo_url')
       .eq('id', id)
       .single();
 
@@ -139,7 +139,11 @@ export default function ActivityDetailPage() {
 
       <div className="relative h-40 w-full overflow-hidden rounded-card bg-surface-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={getPlaceholderImage(event.category)} alt="" className="h-full w-full object-cover" />
+        <img
+          src={event.photo_url || getPlaceholderImage(event.category)}
+          alt=""
+          className="h-full w-full object-cover"
+        />
       </div>
 
       <div className="rounded-card border border-border bg-surface-card p-5">

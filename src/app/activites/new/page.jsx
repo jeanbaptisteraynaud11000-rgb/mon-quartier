@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { EVENT_CATEGORIES } from '@/lib/eventCategories';
+import { ImagePlus, Pencil, List, MapPin, Calendar, Clock, Minus, Plus, Send } from 'lucide-react';
+
+const MAX_PHOTO_SIZE = 10 * 1024 * 1024;
 
 export default function NewActivityPage() {
   const router = useRouter();
@@ -15,8 +18,13 @@ export default function NewActivityPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [eventDate, setEventDate] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [maxAttendees, setMaxAttendees] = useState(10);
+
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoError, setPhotoError] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -46,6 +54,25 @@ export default function NewActivityPage() {
     loadProfile();
   }, [router]);
 
+  function handlePhotoSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError('');
+
+    const accepted = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!accepted.includes(file.type)) {
+      setPhotoError('Format accepté : JPEG, PNG ou WebP.');
+      return;
+    }
+    if (file.size > MAX_PHOTO_SIZE) {
+      setPhotoError('La photo doit faire moins de 10 Mo.');
+      return;
+    }
+
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -56,14 +83,14 @@ export default function NewActivityPage() {
       setError('Le titre est obligatoire.');
       return;
     }
-    if (!eventDate) {
-      setError('La date est obligatoire.');
+    if (!date || !time) {
+      setError('La date et l\'heure sont obligatoires.');
       return;
     }
 
-    const isoDate = new Date(eventDate).toISOString();
+    const isoDate = new Date(`${date}T${time}`).toISOString();
     if (new Date(isoDate) <= new Date()) {
-      setError("La date doit être dans le futur.");
+      setError('La date doit être dans le futur.');
       return;
     }
 
@@ -88,14 +115,24 @@ export default function NewActivityPage() {
       .select('id')
       .single();
 
-    setSubmitting(false);
-
     if (insertError || !newEvent) {
+      setSubmitting(false);
       hasSubmittedRef.current = false;
-      setError("Une erreur est survenue lors de la création. Réessaie.");
+      setError('Une erreur est survenue lors de la création. Réessaie.');
       return;
     }
 
+    if (photoFile) {
+      const ext = photoFile.name.split('.').pop();
+      const path = `${newEvent.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('events').upload(path, photoFile);
+      if (!uploadError) {
+        const publicUrl = supabase.storage.from('events').getPublicUrl(path).data.publicUrl;
+        await supabase.from('events').update({ photo_url: publicUrl }).eq('id', newEvent.id);
+      }
+    }
+
+    setSubmitting(false);
     router.push(`/activites/${newEvent.id}`);
   }
 
@@ -109,105 +146,196 @@ export default function NewActivityPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-xl font-semibold text-content-primary">Organiser une activité</h1>
+      <h1 className="text-xl font-semibold text-content-primary">Organiser une activité</h1>
+      <p className="mt-1 text-sm text-content-secondary">Propose un moment convivial à tes voisins.</p>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+        {/* Photo de couverture */}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-content-primary">Photo de couverture</label>
+          {photoPreview ? (
+            <div className="relative h-40 w-full overflow-hidden rounded-card">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+            </div>
+          ) : (
+            <label className="flex h-40 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-card border border-dashed border-corail/40 bg-corail/5 text-center transition-fast hover:bg-corail/10">
+              <span className="flex h-11 w-11 items-center justify-center rounded-pill bg-corail/10 text-corail">
+                <ImagePlus size={20} />
+              </span>
+              <span className="text-sm font-medium text-corail">Ajouter une photo</span>
+              <span className="text-xs text-content-secondary">Format conseillé : 16:9, max 10 Mo</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoSelect}
+                className="hidden"
+              />
+            </label>
+          )}
+          {photoError && <p className="mt-1 text-xs text-corail">{photoError}</p>}
+        </div>
+
+        {/* Catégorie */}
         <div>
           <label className="mb-1 block text-sm font-medium text-content-primary">Catégorie</label>
           <div className="grid grid-cols-2 gap-2">
             {EVENT_CATEGORIES.map((cat) => {
               const Icon = cat.icon;
+              const active = category === cat.category;
               return (
                 <button
                   key={cat.category}
                   type="button"
                   onClick={() => setCategory(cat.category)}
                   className={`flex items-center gap-2 rounded-card border px-3 py-3 text-sm font-medium transition-fast ${
-                    category === cat.category
+                    active
                       ? 'border-corail bg-corail/5 text-corail'
                       : 'border-border bg-surface text-content-primary hover:bg-surface-card'
                   }`}
                 >
-                  <Icon size={16} /> {cat.label}
+                  <span
+                    className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-pill ${
+                      active ? 'bg-corail/15 text-corail' : 'bg-vert/10 text-vert'
+                    }`}
+                  >
+                    <Icon size={15} />
+                  </span>
+                  {cat.label}
                 </button>
               );
             })}
           </div>
         </div>
 
+        {/* Titre */}
         <div>
           <label htmlFor="title" className="mb-1 block text-sm font-medium text-content-primary">
             Titre
           </label>
-          <input
-            id="title"
-            type="text"
-            required
-            maxLength={100}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex : Partie de belote entre voisins"
-            className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
-          />
+          <div className="relative">
+            <span className="absolute left-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-pill bg-corail/10 text-corail">
+              <Pencil size={14} />
+            </span>
+            <input
+              id="title"
+              type="text"
+              required
+              maxLength={100}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex : Partie de belote entre voisins"
+              className="w-full rounded-card border border-border bg-surface py-3 pl-12 pr-4 text-content-primary outline-none transition-fast focus:border-corail"
+            />
+          </div>
         </div>
 
+        {/* Description */}
         <div>
           <label htmlFor="description" className="mb-1 block text-sm font-medium text-content-primary">
             Description <span className="text-content-secondary">(optionnel)</span>
           </label>
-          <textarea
-            id="description"
-            rows={3}
-            maxLength={1000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full resize-none rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
-          />
+          <div className="relative">
+            <span className="absolute left-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-pill bg-vert/10 text-vert">
+              <List size={14} />
+            </span>
+            <textarea
+              id="description"
+              rows={3}
+              maxLength={200}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Décris ton activité en quelques mots..."
+              className="w-full resize-none rounded-card border border-border bg-surface py-3 pl-12 pr-4 text-content-primary outline-none transition-fast focus:border-corail"
+            />
+          </div>
+          <p className="mt-1 text-right text-xs text-content-secondary">{description.length}/200</p>
         </div>
 
+        {/* Lieu */}
         <div>
           <label htmlFor="location" className="mb-1 block text-sm font-medium text-content-primary">
             Lieu <span className="text-content-secondary">(optionnel)</span>
           </label>
-          <input
-            id="location"
-            type="text"
-            maxLength={150}
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Ex : Parc Olbius Riquier, devant l'entrée"
-            className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
-          />
+          <div className="relative">
+            <span className="absolute left-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-pill bg-vert/10 text-vert">
+              <MapPin size={14} />
+            </span>
+            <input
+              id="location"
+              type="text"
+              maxLength={150}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Ex : Parc Olbius Riquier, devant l'entrée"
+              className="w-full rounded-card border border-border bg-surface py-3 pl-12 pr-4 text-content-primary outline-none transition-fast focus:border-corail"
+            />
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="eventDate" className="mb-1 block text-sm font-medium text-content-primary">
-            Date et heure
-          </label>
-          <input
-            id="eventDate"
-            type="datetime-local"
-            required
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
-          />
+        {/* Date et heure séparées */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="date" className="mb-1 block text-sm font-medium text-content-primary">
+              Date
+            </label>
+            <div className="relative">
+              <span className="absolute left-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-pill bg-corail/10 text-corail">
+                <Calendar size={14} />
+              </span>
+              <input
+                id="date"
+                type="date"
+                required
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full rounded-card border border-border bg-surface py-3 pl-12 pr-2 text-content-primary outline-none transition-fast focus:border-corail"
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="time" className="mb-1 block text-sm font-medium text-content-primary">
+              Heure
+            </label>
+            <div className="relative">
+              <span className="absolute left-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-pill bg-vert/10 text-vert">
+                <Clock size={14} />
+              </span>
+              <input
+                id="time"
+                type="time"
+                required
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full rounded-card border border-border bg-surface py-3 pl-12 pr-2 text-content-primary outline-none transition-fast focus:border-corail"
+              />
+            </div>
+          </div>
         </div>
 
+        {/* Nombre de places — stepper */}
         <div>
-          <label htmlFor="maxAttendees" className="mb-1 block text-sm font-medium text-content-primary">
-            Nombre de places
-          </label>
-          <input
-            id="maxAttendees"
-            type="number"
-            required
-            min={1}
-            max={500}
-            value={maxAttendees}
-            onChange={(e) => setMaxAttendees(parseInt(e.target.value, 10) || 1)}
-            className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
-          />
+          <label className="mb-1 block text-sm font-medium text-content-primary">Nombre de places</label>
+          <div className="flex items-center justify-between rounded-card border border-border bg-surface p-3">
+            <button
+              type="button"
+              onClick={() => setMaxAttendees((n) => Math.max(1, n - 1))}
+              className="flex h-9 w-9 items-center justify-center rounded-pill bg-surface-card text-content-primary hover:bg-border/50"
+            >
+              <Minus size={16} />
+            </button>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-content-primary">{maxAttendees}</p>
+              <p className="text-xs text-content-secondary">places disponibles</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMaxAttendees((n) => Math.min(500, n + 1))}
+              className="flex h-9 w-9 items-center justify-center rounded-pill bg-surface-card text-content-primary hover:bg-border/50"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
         </div>
 
         {error && <p className="text-sm text-corail">{error}</p>}
@@ -215,9 +343,10 @@ export default function NewActivityPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 h-tap w-full rounded-pill bg-corail font-medium text-white transition-fast hover:bg-corail-hover disabled:opacity-60"
+          className="flex h-tap w-full items-center justify-center gap-2 rounded-pill bg-corail font-medium text-white transition-fast hover:bg-corail-hover disabled:opacity-60"
         >
-          {submitting ? 'Création...' : "Créer l'activité"}
+          <Send size={16} />
+          {submitting ? 'Publication...' : "Publier l'activité"}
         </button>
       </form>
     </div>

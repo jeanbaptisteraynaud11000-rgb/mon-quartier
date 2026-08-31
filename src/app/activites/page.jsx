@@ -42,7 +42,7 @@ export default async function ActivitesPage({ searchParams }) {
 
   let query = supabase
     .from('events')
-    .select('id, category, title, location, event_date, max_attendees, user_id')
+    .select('id, category, title, location, event_date, max_attendees, user_id, photo_url')
     .eq('quartier_id', profile.quartier_id)
     .eq('status', 'active')
     .gte('event_date', new Date().toISOString())
@@ -130,7 +130,7 @@ export default async function ActivitesPage({ searchParams }) {
                 <Link href={`/activites/${event.id}`} className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-card">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={getPlaceholderImage(event.category)}
+                    src={event.photo_url || getPlaceholderImage(event.category)}
                     alt=""
                     className="h-full w-full object-cover"
                   />
