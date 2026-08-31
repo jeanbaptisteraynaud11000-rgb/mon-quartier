@@ -12,7 +12,7 @@
 // plutôt qu'accrocheuse.
 
 import Link from 'next/link';
-import { Search, Users } from 'lucide-react';
+import { Search, Users, Store } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { POST_TYPES, getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
 import { getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
@@ -269,8 +269,19 @@ export default async function HomePage() {
       )}
 
       <Link
+        href="/commerces"
+        className="mt-3 flex items-center justify-between rounded-card border border-border p-4 transition-fast hover:border-content-secondary"
+      >
+        <div className="flex items-center gap-3">
+          <Store size={18} className="text-content-secondary" />
+          <span className="text-sm text-content-primary">Commerces & lieux du quartier</span>
+        </div>
+        <span className="text-xs text-content-secondary">Voir</span>
+      </Link>
+
+      <Link
         href="/voisins"
-        className="mt-8 flex items-center justify-between rounded-card border border-border p-4 transition-fast hover:border-content-secondary"
+        className="mt-3 flex items-center justify-between rounded-card border border-border p-4 transition-fast hover:border-content-secondary"
       >
         <div className="flex items-center gap-3">
           <Users size={18} className="text-content-secondary" />

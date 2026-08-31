@@ -151,6 +151,9 @@ export default function ProfilePage() {
       )}
 
       <div className="flex flex-col gap-1 rounded-card border border-border bg-surface-card p-2">
+        <Link href="/commerces" className="rounded-card px-3 py-2 text-sm text-content-primary hover:bg-surface">
+          Commerces & lieux du quartier
+        </Link>
         <Link href="/voisins" className="rounded-card px-3 py-2 text-sm text-content-primary hover:bg-surface">
           Mes voisins
         </Link>
