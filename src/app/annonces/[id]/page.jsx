@@ -34,7 +34,7 @@ export default async function AnnonceDetailPage({ params }) {
   // séparément), donc une jointure imbriquée `profiles(...)` échouerait.
   const { data: authorProfile } = await supabase
     .from('profiles')
-    .select('display_name, points')
+    .select('display_name, points, photo_url, photo_visible')
     .eq('user_id', post.user_id)
     .single();
 
@@ -89,6 +89,14 @@ export default async function AnnonceDetailPage({ params }) {
         <h1 className="mt-3 text-xl font-semibold text-content-primary">{post.title}</h1>
 
         <div className="mt-2 flex items-center gap-2 text-sm text-content-secondary">
+          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-pill bg-corail/10 text-[10px] font-semibold text-corail">
+            {authorProfile?.photo_visible && authorProfile?.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={authorProfile.photo_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              authorName.charAt(0).toUpperCase()
+            )}
+          </div>
           <span>{authorName}</span>
           <span className="rounded-pill bg-surface px-2 py-0.5 text-xs font-medium text-content-secondary">
             {getLevel(authorProfile?.points || 0).label}

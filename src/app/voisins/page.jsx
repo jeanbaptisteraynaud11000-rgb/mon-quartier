@@ -51,7 +51,7 @@ export default async function VoisinsPage() {
   // (section 83) en attendant une vraie pagination si le quartier grossit.
   const { data: neighbors, error } = await supabase
     .from('profiles')
-    .select('user_id, display_name, created_at, map_visibility')
+    .select('user_id, display_name, created_at, map_visibility, photo_url, photo_visible')
     .eq('quartier_id', myProfile.quartier_id)
     .neq('map_visibility', 'off')
     .order('created_at', { ascending: true })
@@ -85,8 +85,13 @@ export default async function VoisinsPage() {
               key={neighbor.user_id}
               className="flex items-center gap-3 rounded-card border border-border bg-surface-card p-3"
             >
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-pill bg-corail/10 font-semibold text-corail">
-                {initial}
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-pill bg-corail/10 font-semibold text-corail">
+                {neighbor.photo_visible && neighbor.photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={neighbor.photo_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initial
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-content-primary">

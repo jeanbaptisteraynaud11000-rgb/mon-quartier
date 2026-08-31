@@ -1,13 +1,21 @@
 'use client';
 
-// Placeholder enrichi le temps du chantier auth/communauté — la vraie page
-// profil (avatar, bio, badges, stats...) sera construite au chantier dédié.
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { getLevel } from '@/lib/levels';
+import { Settings, Pencil } from 'lucide-react';
+
+function memberSince(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const diffMonths = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+  if (diffMonths < 1) return "arrivé(e) ce mois-ci";
+  if (diffMonths < 12) return `membre depuis ${Math.max(1, Math.floor(diffMonths))} mois`;
+  const years = Math.floor(diffMonths / 12);
+  return `membre depuis ${years} an${years > 1 ? 's' : ''}`;
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,22 +23,36 @@ export default function ProfilePage() {
   const [generating, setGenerating] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  const [loading, setLoading] = useState(true);
   const [role, setRole] = useState(null);
-  const [points, setPoints] = useState(0);
+  const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({ posts: 0, eventsOrganized: 0, eventsJoined: 0 });
 
   useEffect(() => {
-    async function loadRole() {
+    async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profile } = await supabase
+
+      const { data: p } = await supabase
         .from('profiles')
-        .select('role, points')
+        .select('display_name, photo_url, bio, role, points, quartier_id, created_at')
         .eq('user_id', user.id)
         .single();
-      setRole(profile?.role);
-      setPoints(profile?.points || 0);
+
+      setProfile(p);
+      setRole(p?.role);
+
+      const [{ count: posts }, { count: eventsOrganized }, { count: eventsJoined }] = await Promise.all([
+        supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'active'),
+        supabase.from('events').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'active'),
+        supabase.from('event_attendees').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      ]);
+
+      setStats({ posts: posts || 0, eventsOrganized: eventsOrganized || 0, eventsJoined: eventsJoined || 0 });
+      setLoading(false);
     }
-    loadRole();
+    loadProfile();
   }, []);
 
   async function handleLogout() {
@@ -59,11 +81,6 @@ export default function ProfilePage() {
     setInviteError('');
 
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('quartier_id')
-      .eq('user_id', user.id)
-      .single();
 
     if (!profile?.quartier_id) {
       setInviteError("Termine d'abord ton inscription pour pouvoir inviter quelqu'un.");
@@ -96,17 +113,71 @@ export default function ProfilePage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="skeleton h-4 w-40" />
+      </div>
+    );
+  }
+
+  const initial = (profile?.display_name || '?').charAt(0).toUpperCase();
+  const points = profile?.points || 0;
+
   return (
     <div className="flex flex-col gap-4 p-4">
-      <div className="rounded-card border border-border bg-surface-card p-4 text-center">
-        <p className="text-sm font-medium text-corail">{getLevel(points).label}</p>
-        <p className="mt-1 text-xs text-content-secondary">
-          {points} point{points > 1 ? 's' : ''} de contribution
-        </p>
+      {/* En-tête profil */}
+      <div className="flex items-center gap-4 rounded-card border border-border bg-surface-card p-4 shadow-soft">
+        {profile?.photo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={profile.photo_url} alt="" className="h-16 w-16 flex-shrink-0 rounded-pill object-cover" />
+        ) : (
+          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-pill bg-corail/10 text-xl font-semibold text-corail">
+            {initial}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-semibold text-content-primary">
+            {profile?.display_name || 'Voisin'}
+          </p>
+          <p className="text-xs text-content-secondary">{memberSince(profile?.created_at)}</p>
+          <p className="mt-1 text-xs font-medium text-corail">{getLevel(points).label}</p>
+        </div>
+        <Link
+          href="/profile/edit"
+          aria-label="Modifier mon profil"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-pill border border-border text-content-secondary hover:bg-surface"
+        >
+          <Pencil size={15} />
+        </Link>
       </div>
 
-      <div className="rounded-card border border-border bg-surface-card p-6 text-center text-sm text-content-secondary">
-        Page « /profile » — à construire dans un prochain chantier.
+      {profile?.bio && (
+        <p className="rounded-card border border-border bg-surface-card p-4 text-sm text-content-primary">
+          {profile.bio}
+        </p>
+      )}
+
+      {/* Statistiques factuelles — jamais de score opaque (section 73) */}
+      <div className="grid grid-cols-3 gap-2">
+        <StatBlock value={stats.posts} label="annonces" href="/mes-annonces" />
+        <StatBlock value={stats.eventsOrganized} label="activités créées" href="/activites" />
+        <StatBlock value={stats.eventsJoined} label="participations" href="/activites" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href="/mes-annonces"
+          className="rounded-card border border-border bg-surface-card p-3 text-center text-sm font-medium text-content-primary shadow-soft hover:bg-border/20"
+        >
+          Mes annonces
+        </Link>
+        <Link
+          href="/settings"
+          className="flex items-center justify-center gap-1.5 rounded-card border border-border bg-surface-card p-3 text-center text-sm font-medium text-content-primary shadow-soft hover:bg-border/20"
+        >
+          <Settings size={15} /> Paramètres
+        </Link>
       </div>
 
       <div className="rounded-card border border-border bg-surface-card p-4">
@@ -185,6 +256,18 @@ export default function ProfilePage() {
         Supprimer mon compte
       </button>
     </div>
+  );
+}
+
+function StatBlock({ value, label, href }) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-center gap-0.5 rounded-card border border-border bg-surface-card p-3 text-center shadow-soft hover:bg-border/20"
+    >
+      <span className="text-lg font-semibold text-content-primary">{value}</span>
+      <span className="text-[11px] text-content-secondary">{label}</span>
+    </Link>
   );
 }
 
