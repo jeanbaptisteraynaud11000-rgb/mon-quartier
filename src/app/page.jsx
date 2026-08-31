@@ -300,7 +300,7 @@ export default async function HomePage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={getPlaceholderImage('communaute')}
+            src="/placeholders/voisins-card.jpg"
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -319,7 +319,7 @@ export default async function HomePage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={getPlaceholderImage('commerce')}
+            src="/placeholders/commerce-card.jpg"
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
