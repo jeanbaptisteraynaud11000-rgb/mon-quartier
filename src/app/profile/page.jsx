@@ -141,6 +141,9 @@ export default function ProfilePage() {
       )}
 
       <div className="flex flex-col gap-1 rounded-card border border-border bg-surface-card p-2">
+        <Link href="/voisins" className="rounded-card px-3 py-2 text-sm text-content-primary hover:bg-surface">
+          Mes voisins
+        </Link>
         <Link href="/help" className="rounded-card px-3 py-2 text-sm text-content-primary hover:bg-surface">
           Aide
         </Link>

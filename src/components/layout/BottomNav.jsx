@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Grid3x3, Plus, Users, CircleUserRound } from 'lucide-react';
+import { Home, Grid3x3, Plus, Calendar, CircleUserRound } from 'lucide-react';
 import CreateSheet from './CreateSheet';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Accueil', icon: Home },
   { href: '/annonces', label: 'Annonces', icon: Grid3x3 },
   // Le bouton central "+" est géré séparément (voir ci-dessous)
-  { href: '/voisins', label: 'Mes voisins', icon: Users },
+  { href: '/activites', label: 'Activités', icon: Calendar },
   { href: '/profile', label: 'Profil', icon: CircleUserRound },
 ];
 

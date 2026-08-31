@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { X } from 'lucide-react';
+import { X, CalendarPlus } from 'lucide-react';
 import { POST_TYPES } from '@/lib/postTypes';
 
 export default function CreateSheet({ open, onClose }) {
@@ -65,6 +65,19 @@ export default function CreateSheet({ open, onClose }) {
               </Link>
             );
           })}
+
+          <Link
+            href="/activites/new"
+            onClick={onClose}
+            className="flex items-center gap-4 rounded-card bg-surface-card px-4 py-4 transition-fast hover:bg-border/60 active:scale-[0.98]"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-surface text-content-primary" aria-hidden="true">
+              <CalendarPlus size={20} />
+            </span>
+            <span className="text-base font-medium text-content-primary">
+              Organiser une activité
+            </span>
+          </Link>
         </div>
       </div>
     </div>
