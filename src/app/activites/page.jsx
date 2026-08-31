@@ -1,11 +1,15 @@
-// Server Component : activités à venir du quartier, triées par date.
+// Server Component : activités à venir du quartier, triées par date,
+// filtrable par catégorie via ?category=sortie|musee|sport|jeux_de_societe|autre.
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
+import { EVENT_CATEGORIES, getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
 
-export default async function ActivitesPage() {
+export default async function ActivitesPage({ searchParams }) {
+  const params = await searchParams;
+  const activeCategory = params?.category;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,7 +39,7 @@ export default async function ActivitesPage() {
     );
   }
 
-  const { data: events, error } = await supabase
+  let query = supabase
     .from('events')
     .select('id, category, title, location, event_date, max_attendees, user_id')
     .eq('quartier_id', profile.quartier_id)
@@ -43,6 +47,12 @@ export default async function ActivitesPage() {
     .gte('event_date', new Date().toISOString())
     .order('event_date', { ascending: true })
     .limit(30);
+
+  if (activeCategory) {
+    query = query.eq('category', activeCategory);
+  }
+
+  const { data: events, error } = await query;
 
   let attendeeCounts = {};
   if (events?.length > 0) {
@@ -65,6 +75,20 @@ export default async function ActivitesPage() {
         >
           Organiser
         </Link>
+      </div>
+
+      {/* Filtres de catégorie — même traitement que /annonces */}
+      <div className="grid grid-cols-3 gap-2">
+        <FilterTile href="/activites" label="Toutes" active={!activeCategory} />
+        {EVENT_CATEGORIES.map((cat) => (
+          <FilterTile
+            key={cat.category}
+            href={`/activites?category=${cat.category}`}
+            image={getPlaceholderImage(cat.category)}
+            label={cat.label}
+            active={activeCategory === cat.category}
+          />
+        ))}
       </div>
 
       {error && (
@@ -122,6 +146,30 @@ export default async function ActivitesPage() {
         })}
       </div>
     </div>
+  );
+}
+
+function FilterTile({ href, label, image, active }) {
+  return (
+    <Link
+      href={href}
+      className={`relative overflow-hidden rounded-card transition-fast ${
+        active ? 'ring-2 ring-corail ring-offset-2 ring-offset-surface' : ''
+      }`}
+    >
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image} alt={label} className="aspect-square w-full object-cover" />
+      ) : (
+        <div
+          className={`flex aspect-square w-full items-center justify-center text-sm font-semibold ${
+            active ? 'bg-corail text-white' : 'bg-surface-card text-content-primary'
+          }`}
+        >
+          Toutes
+        </div>
+      )}
+    </Link>
   );
 }
 
