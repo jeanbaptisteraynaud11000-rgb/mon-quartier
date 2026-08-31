@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
+import { getLevel } from '@/lib/levels';
 import ContactActions from './ContactActions';
 
 export default async function AnnonceDetailPage({ params }) {
@@ -33,7 +34,7 @@ export default async function AnnonceDetailPage({ params }) {
   // séparément), donc une jointure imbriquée `profiles(...)` échouerait.
   const { data: authorProfile } = await supabase
     .from('profiles')
-    .select('display_name')
+    .select('display_name, points')
     .eq('user_id', post.user_id)
     .single();
 
@@ -89,6 +90,9 @@ export default async function AnnonceDetailPage({ params }) {
 
         <div className="mt-2 flex items-center gap-2 text-sm text-content-secondary">
           <span>{authorName}</span>
+          <span className="rounded-pill bg-surface px-2 py-0.5 text-xs font-medium text-content-secondary">
+            {getLevel(authorProfile?.points || 0).label}
+          </span>
           <span>·</span>
           <span>{formatRelativeTime(post.created_at)}</span>
         </div>

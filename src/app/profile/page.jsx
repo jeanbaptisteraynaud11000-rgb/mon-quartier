@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { getLevel } from '@/lib/levels';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function ProfilePage() {
   const [inviteError, setInviteError] = useState('');
   const [copied, setCopied] = useState(false);
   const [role, setRole] = useState(null);
+  const [points, setPoints] = useState(0);
 
   useEffect(() => {
     async function loadRole() {
@@ -22,10 +24,11 @@ export default function ProfilePage() {
       if (!user) return;
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, points')
         .eq('user_id', user.id)
         .single();
       setRole(profile?.role);
+      setPoints(profile?.points || 0);
     }
     loadRole();
   }, []);
@@ -95,6 +98,13 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      <div className="rounded-card border border-border bg-surface-card p-4 text-center">
+        <p className="text-sm font-medium text-corail">{getLevel(points).label}</p>
+        <p className="mt-1 text-xs text-content-secondary">
+          {points} point{points > 1 ? 's' : ''} de contribution
+        </p>
+      </div>
+
       <div className="rounded-card border border-border bg-surface-card p-6 text-center text-sm text-content-secondary">
         Page « /profile » — à construire dans un prochain chantier.
       </div>
