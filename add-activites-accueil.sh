@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Ajout section activites sur accueil..."
+
+mkdir -p "src/app"
+cat > "src/app/page.jsx" << 'MQEOF_SRC_APP_PAGE_JSX'
 // Page d'accueil — Server Component.
 //
 // Parti pris UX : on montre un vrai fil d'activité récente du quartier
@@ -272,3 +278,7 @@ function StatPill({ emoji, value, label, href }) {
   );
 }
 
+MQEOF_SRC_APP_PAGE_JSX
+
+echo "Section ajoutee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"accueil : section prochaines activites\" && git push"
