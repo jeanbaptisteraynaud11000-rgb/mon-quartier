@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Grille images de categories sur /annonces..."
+
+mkdir -p "src/app/annonces"
+cat > "src/app/annonces/page.jsx" << 'MQEOF_SRC_APP_ANNONCES_PAGE_JSX'
 // Server Component : liste des annonces du quartier de l'utilisateur,
 // filtrable par type via ?type=don|entraide|covoiturage|cherche|alerte.
 
@@ -180,3 +186,7 @@ function FilterTile({ href, label, image, active }) {
   );
 }
 
+MQEOF_SRC_APP_ANNONCES_PAGE_JSX
+
+echo "Grille de filtres appliquee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"annonces : filtres en grille avec images de categories\" && git push"
