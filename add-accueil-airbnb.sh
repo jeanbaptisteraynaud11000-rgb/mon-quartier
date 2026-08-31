@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Refonte accueil style epure..."
+
+mkdir -p "src/app"
+cat > "src/app/page.jsx" << 'MQEOF_SRC_APP_PAGE_JSX'
 // Page d'accueil — Server Component.
 //
 // Direction visuelle : peu de couleur (le corail/vert de la marque
@@ -284,3 +290,7 @@ export default async function HomePage() {
   );
 }
 
+MQEOF_SRC_APP_PAGE_JSX
+
+echo "Accueil redessine avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"accueil : refonte visuelle epuree\" && git push"
