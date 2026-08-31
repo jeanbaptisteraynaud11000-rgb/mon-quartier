@@ -166,22 +166,22 @@ export default async function HomePage() {
         <span className="text-sm text-content-secondary">Rechercher dans le quartier</span>
       </Link>
 
-      {/* Catégories — pastilles pleinement colorées */}
-      <div className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-1">
-        {POST_TYPES.map((cat, i) => {
-          const Icon = cat.icon;
-          const solid = i % 2 === 0 ? 'bg-corail text-white' : 'bg-vert text-white';
-          return (
-            <Link
-              key={cat.type}
-              href={`/annonces?type=${cat.type}`}
-              className={`flex flex-shrink-0 items-center gap-1.5 rounded-pill px-3.5 py-2 text-xs font-medium shadow-soft transition-fast active:scale-95 ${solid}`}
-            >
-              <Icon size={14} />
-              {cat.label}
-            </Link>
-          );
-        })}
+      {/* Catégories — vraies illustrations, grille 3 colonnes (2 lignes, pas de scroll) */}
+      <div className="mt-5 grid grid-cols-3 gap-2.5">
+        {POST_TYPES.map((cat) => (
+          <Link
+            key={cat.type}
+            href={`/annonces?type=${cat.type}`}
+            className="overflow-hidden rounded-card shadow-soft transition-fast active:scale-95"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/categories/${cat.type}.png`}
+              alt={cat.label}
+              className="aspect-square w-full object-cover"
+            />
+          </Link>
+        ))}
       </div>
 
       {/* Alerte la plus récente */}
@@ -192,7 +192,7 @@ export default async function HomePage() {
         >
           <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-pill">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={getPlaceholderImage('alerte')} alt="" className="h-full w-full object-cover" />
+            <img src="/categories/alerte.png" alt="" className="h-full w-full object-cover" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-content-primary">{featuredAlert.title}</p>
