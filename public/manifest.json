@@ -1,6 +1,6 @@
 {
-  "name": "Mon Quartier",
-  "short_name": "Mon Quartier",
+  "name": "Hoody",
+  "short_name": "Hoody",
   "description": "L'application quotidienne de votre voisinage",
   "start_url": "/",
   "display": "standalone",

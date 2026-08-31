@@ -179,14 +179,14 @@ export default function OnboardingPage() {
           a bien été envoyée à l'administrateur du quartier.
         </p>
         <p className="mt-3">
-          Tu peux déjà découvrir Mon Quartier en attendant. Certaines fonctionnalités
+          Tu peux déjà découvrir Hoody en attendant. Certaines fonctionnalités
           (messagerie, recherche de voisins) seront disponibles après validation.
         </p>
         <button
           onClick={() => router.push('/')}
           className="mt-6 h-tap w-full rounded-pill bg-corail font-medium text-white transition-fast hover:bg-corail-hover"
         >
-          Découvrir Mon Quartier
+          Découvrir Hoody
         </button>
       </ScreenCard>
     );
@@ -236,7 +236,7 @@ export default function OnboardingPage() {
           Où habites-tu ?
         </h1>
         <p className="mb-6 text-sm text-content-secondary">
-          On va vérifier si Mon Quartier est disponible dans ton secteur.
+          On va vérifier si Hoody est disponible dans ton secteur.
         </p>
 
         <div className="relative">
@@ -289,7 +289,7 @@ export default function OnboardingPage() {
         {screen === SCREENS.NO_QUARTIER && (
           <div className="mt-6 rounded-card border border-border bg-surface-card p-4">
             <p className="text-sm text-content-primary">
-              Mon Quartier n'est pas encore disponible dans votre secteur.
+              Hoody n'est pas encore disponible dans votre secteur.
             </p>
             <p className="mt-2 text-xs text-content-secondary">
               {selectedLabel}

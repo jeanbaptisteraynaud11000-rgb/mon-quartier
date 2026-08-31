@@ -26,7 +26,7 @@ export default function MentionsLegalesPage() {
 
       <h2 className="mt-6 mb-2 font-semibold">Propriété intellectuelle</h2>
       <p className="text-content-secondary">
-        L'ensemble des contenus de Mon Quartier (textes, logo, charte graphique) sont
+        L'ensemble des contenus de Hoody (textes, logo, charte graphique) sont
         protégés. Les contenus publiés par les utilisateurs (annonces, messages) leur
         appartiennent.
       </p>

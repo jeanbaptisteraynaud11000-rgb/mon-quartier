@@ -6,7 +6,7 @@ export default function OfflinePage() {
         Vous êtes hors connexion
       </h1>
       <p className="mt-2 text-sm text-content-secondary">
-        Reconnecte-toi pour retrouver Mon Quartier. Rien de ce que tu ferais ici ne serait
+        Reconnecte-toi pour retrouver Hoody. Rien de ce que tu ferais ici ne serait
         envoyé tant que la connexion n'est pas rétablie.
       </p>
     </div>

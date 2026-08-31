@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Bell, MessageCircle } from 'lucide-react';
 
 // NOTE : les badges (nombre non lus) sont volontairement absents pour l'instant.
@@ -32,8 +33,8 @@ function IconButton({ href, ariaLabel, children }) {
 export default function Header() {
   return (
     <header className="safe-top sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur">
-      <Link href="/" className="text-lg font-semibold text-content-primary">
-        Mon Quartier
+      <Link href="/" className="flex items-center" aria-label="Hoody, accueil">
+        <Image src="/logo.png" alt="Hoody" width={96} height={30} priority className="h-6 w-auto" />
       </Link>
 
       <div className="flex items-center gap-1">

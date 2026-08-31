@@ -4,7 +4,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 
 export const metadata = {
-  title: 'Mon Quartier',
+  title: 'Hoody',
   description: "L'application quotidienne de votre voisinage : entraide, prêt, covoiturage et vie de quartier.",
   manifest: '/manifest.json',
   icons: {

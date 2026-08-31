@@ -10,7 +10,7 @@ export default function CGUPage() {
 
       <h2 className="mt-6 mb-2 font-semibold">1. Objet</h2>
       <p className="text-content-secondary">
-        Mon Quartier est une application permettant aux habitants d'un même quartier de se
+        Hoody est une application permettant aux habitants d'un même quartier de se
         découvrir, s'entraider, échanger des objets et communiquer.
       </p>
 
@@ -30,7 +30,7 @@ export default function CGUPage() {
       <h2 className="mt-6 mb-2 font-semibold">4. Responsabilité</h2>
       <p className="text-content-secondary">
         Les échanges entre voisins (prêts, dons, covoiturage) se font sous la responsabilité
-        des utilisateurs eux-mêmes. Mon Quartier ne garantit pas la qualité, la sécurité ou
+        des utilisateurs eux-mêmes. Hoody ne garantit pas la qualité, la sécurité ou
         la légalité des annonces publiées.
       </p>
 

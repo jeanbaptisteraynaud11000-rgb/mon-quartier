@@ -8,7 +8,7 @@ export default function CookiesPage() {
       </p>
 
       <p className="text-content-secondary">
-        Mon Quartier utilise uniquement des cookies techniques nécessaires au
+        Hoody utilise uniquement des cookies techniques nécessaires au
         fonctionnement du service (maintien de ta session de connexion). Aucun cookie
         publicitaire ou de tracking tiers n'est utilisé à ce stade.
       </p>
