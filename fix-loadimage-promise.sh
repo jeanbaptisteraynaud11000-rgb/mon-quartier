@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Fix critique : loadImage() est une Promise en MapLibre v4, pas un callback..."
+
+mkdir -p "src/components/map"
+cat > "src/components/map/QuartierMapView.jsx" << 'MQEOF_SRC_COMPONENTS_MAP_QUARTIERMAPVIEW_JSX'
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -314,3 +320,7 @@ export default function QuartierMapView({ centerLat, centerLng, boundary, areaM2
   );
 }
 
+MQEOF_SRC_COMPONENTS_MAP_QUARTIERMAPVIEW_JSX
+
+echo "Correction appliquee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"fix: loadImage() Promise API MapLibre v4\" && git push"
