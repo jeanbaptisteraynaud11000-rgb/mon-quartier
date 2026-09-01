@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+set -e
+echo "Renforcement des ombres portees..."
+
+cat > "tailwind.config.js" << 'MQEOF_TAILWIND_CONFIG_JS'
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -60,3 +65,7 @@ module.exports = {
   plugins: [],
 };
 
+MQEOF_TAILWIND_CONFIG_JS
+
+echo "Ombres renforcees avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"design : ombres portees plus marquees\" && git push"
