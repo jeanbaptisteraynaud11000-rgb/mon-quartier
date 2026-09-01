@@ -154,47 +154,65 @@ export default function QuartierMapView({ centerLat, centerLng, boundary, areaM2
           paint: { 'text-color': '#FFFFFF' },
         });
 
-        map.addLayer({
-          id: 'unclustered-point-halo',
-          type: 'circle',
-          source: 'content',
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-color': [
-              'match',
-              ['get', 'kind'],
-              'post', KIND_COLORS.post,
-              'event', KIND_COLORS.event,
-              'place', KIND_COLORS.place,
-              '#999999',
-            ],
-            'circle-radius': 19,
-            'circle-opacity': 0.18,
-          },
-        });
+        // Vraies icônes en forme de pin fournies pour les annonces et
+        // activités (chargement asynchrone, ce sont de vrais fichiers).
+        // Pour les commerces (aucune image fournie pour ces catégories),
+        // on garde le repli emoji dessiné sur canvas.
+        const REAL_MARKER_CATEGORIES = new Set([
+          'don', 'entraide', 'covoiturage', 'cherche', 'alerte',
+          'sortie', 'musee', 'sport', 'jeux_de_societe',
+        ]);
 
-        // Une icône emoji par catégorie exacte (pas juste par grande
-        // famille) — enregistrée comme image dessinée sur un <canvas>,
-        // donc aucune dépendance à une police/glyphes serveur.
-        const usedCategories = new Set(points.map((p) => p.category));
-        usedCategories.forEach((category) => {
-          const spec = CATEGORY_EMOJI[category] || { emoji: '📍', color: '#999999' };
+        const usedCategories = [...new Set(points.map((p) => p.category))];
+
+        const loadPromises = usedCategories.map((category) => {
           const imageId = `marker-${category}`;
-          if (!map.hasImage(imageId)) {
-            map.addImage(imageId, createEmojiMarkerImage(spec.emoji, spec.color));
+          if (map.hasImage(imageId)) return Promise.resolve();
+
+          if (REAL_MARKER_CATEGORIES.has(category)) {
+            return new Promise((resolve) => {
+              map.loadImage(`/markers/${category}.png`, (err, image) => {
+                if (!err && image && !map.hasImage(imageId)) {
+                  map.addImage(imageId, image);
+                }
+                resolve();
+              });
+            });
           }
+
+          const spec = CATEGORY_EMOJI[category] || { emoji: '📍', color: '#999999' };
+          map.addImage(imageId, createEmojiMarkerImage(spec.emoji, spec.color));
+          return Promise.resolve();
         });
 
-        map.addLayer({
-          id: 'unclustered-point',
-          type: 'symbol',
-          source: 'content',
-          filter: ['!', ['has', 'point_count']],
-          layout: {
-            'icon-image': ['concat', 'marker-', ['get', 'category']],
-            'icon-size': 0.5,
-            'icon-allow-overlap': true,
-          },
+        Promise.all(loadPromises).then(() => {
+          const realCategoriesPresent = usedCategories.filter((c) => REAL_MARKER_CATEGORIES.has(c));
+
+          map.addLayer({
+            id: 'unclustered-point',
+            type: 'symbol',
+            source: 'content',
+            filter: ['!', ['has', 'point_count']],
+            layout: {
+              'icon-image': ['concat', 'marker-', ['get', 'category']],
+              'icon-size':
+                realCategoriesPresent.length > 0
+                  ? ['match', ['get', 'category'], ...realCategoriesPresent.flatMap((c) => [c, 0.35]), 0.5]
+                  : 0.5,
+              'icon-anchor':
+                realCategoriesPresent.length > 0
+                  ? ['match', ['get', 'category'], ...realCategoriesPresent.flatMap((c) => [c, 'bottom']), 'center']
+                  : 'center',
+              'icon-allow-overlap': true,
+            },
+          });
+
+          map.on('click', 'unclustered-point', (e) => {
+            setSelectedPoint(e.features[0].properties);
+          });
+
+          map.on('mouseenter', 'unclustered-point', () => (map.getCanvas().style.cursor = 'pointer'));
+          map.on('mouseleave', 'unclustered-point', () => (map.getCanvas().style.cursor = ''));
         });
 
         map.on('click', 'clusters', (e) => {
@@ -206,14 +224,8 @@ export default function QuartierMapView({ centerLat, centerLng, boundary, areaM2
           });
         });
 
-        map.on('click', 'unclustered-point', (e) => {
-          setSelectedPoint(e.features[0].properties);
-        });
-
         map.on('mouseenter', 'clusters', () => (map.getCanvas().style.cursor = 'pointer'));
         map.on('mouseleave', 'clusters', () => (map.getCanvas().style.cursor = ''));
-        map.on('mouseenter', 'unclustered-point', () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', 'unclustered-point', () => (map.getCanvas().style.cursor = ''));
 
         setMapReady(true);
 
