@@ -1,12 +1,11 @@
 // Server Component : liste des annonces du quartier de l'utilisateur,
 // filtrable par type via ?type=don|entraide|covoiturage|cherche|alerte.
+// Grille 2 colonnes, même style de carte que l'accueil.
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { POST_TYPES, getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
-import { getPlaceholderImage } from '@/lib/placeholderImages';
-import { Heart } from 'lucide-react';
-import PostCardMenu from './PostCardMenu';
+import { POST_TYPES } from '@/lib/postTypes';
+import PostCard from '@/components/PostCard';
 
 export default async function AnnoncesPage({ searchParams }) {
   const params = await searchParams;
@@ -55,10 +54,9 @@ export default async function AnnoncesPage({ searchParams }) {
 
   const { data: posts, error } = await query;
 
-  // Requêtes séparées : pas de clé étrangère directe posts → profiles.
   let authorInfo = {};
   let thumbnailByPost = {};
-  let favoriteCounts = {};
+  let conversationCounts = {};
   if (posts?.length > 0) {
     const userIds = [...new Set(posts.map((p) => p.user_id))];
     const postIds = posts.map((p) => p.id);
@@ -70,7 +68,7 @@ export default async function AnnoncesPage({ searchParams }) {
         .select('post_id, storage_path, position')
         .in('post_id', postIds)
         .order('position', { ascending: true }),
-      supabase.rpc('get_favorite_counts', { p_post_ids: postIds }),
+      supabase.rpc('get_conversation_counts', { p_post_ids: postIds }),
     ]);
 
     authorInfo = Object.fromEntries((authors || []).map((a) => [a.user_id, a]));
@@ -81,7 +79,7 @@ export default async function AnnoncesPage({ searchParams }) {
       }
     }
 
-    favoriteCounts = Object.fromEntries((counts || []).map((c) => [c.post_id, c.count]));
+    conversationCounts = Object.fromEntries((counts || []).map((c) => [c.post_id, c.count]));
   }
 
   return (
@@ -122,73 +120,18 @@ export default async function AnnoncesPage({ searchParams }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {posts?.map((post) => {
-          const typeInfo = getPostTypeInfo(post.type);
-          const thumbnail = thumbnailByPost[post.id] || getPlaceholderImage(post.type);
-          const author = authorInfo[post.user_id];
-          const isOwnPost = post.user_id === user.id;
-          const favCount = favoriteCounts[post.id] || 0;
-
-          return (
-            <div
-              key={post.id}
-              className="flex gap-3 rounded-card border border-border bg-surface-card p-3 shadow-soft"
-            >
-              <Link href={`/annonces/${post.id}`} className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-card bg-surface">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={thumbnail} alt="" className="h-full w-full object-cover" />
-              </Link>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <Link href={`/annonces/${post.id}`} className="flex min-w-0 items-center gap-1.5">
-                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-pill bg-corail/10 text-[9px] font-semibold text-corail">
-                      {author?.photo_visible && author?.photo_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={author.photo_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        (author?.display_name || '?').charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <span className="truncate text-xs font-medium text-content-secondary">
-                      {author?.display_name || 'Voisin'} · {formatRelativeTime(post.created_at)}
-                    </span>
-                  </Link>
-                  <PostCardMenu postId={post.id} isOwnPost={isOwnPost} />
-                </div>
-
-                <Link href={`/annonces/${post.id}`}>
-                  <p className="mt-1 truncate font-semibold text-content-primary">{post.title}</p>
-                  {post.description && (
-                    <p className="mt-0.5 line-clamp-2 text-sm text-content-secondary">
-                      {post.description}
-                    </p>
-                  )}
-                </Link>
-
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="flex-shrink-0 rounded-pill bg-surface px-2 py-0.5 text-[11px] font-medium text-content-secondary">
-                      {typeInfo.label}
-                    </span>
-                    {post.approx_zone && (
-                      <span className="truncate text-[11px] text-content-secondary">
-                        {post.approx_zone}
-                      </span>
-                    )}
-                  </div>
-                  {favCount > 0 && (
-                    <span className="flex flex-shrink-0 items-center gap-1 text-xs text-content-secondary">
-                      <Heart size={13} />
-                      {favCount}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-2 gap-3">
+        {posts?.map((post) => (
+          <PostCard
+            key={post.id}
+            post={post}
+            thumbnail={thumbnailByPost[post.id]}
+            author={authorInfo[post.user_id]}
+            msgCount={conversationCounts[post.id] || 0}
+            isOwnPost={post.user_id === user.id}
+            showMenu
+          />
+        ))}
       </div>
     </div>
   );
