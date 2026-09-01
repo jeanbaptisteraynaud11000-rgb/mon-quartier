@@ -3,6 +3,7 @@ import { MessageCircle } from 'lucide-react';
 import { getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
 import FavoriteHeartButton from './FavoriteHeartButton';
+import PostDistanceBadge from './PostDistanceBadge';
 import PostCardMenu from '@/app/annonces/PostCardMenu';
 
 // Composant serveur : pas d'état, juste de l'affichage. Le cœur favori et
@@ -23,6 +24,7 @@ export default function PostCard({ post, thumbnail, author, msgCount = 0, isOwnP
               Réservé
             </span>
           )}
+          <PostDistanceBadge lat={post.lat} lng={post.lng} />
           <FavoriteHeartButton postId={post.id} />
         </div>
       </Link>

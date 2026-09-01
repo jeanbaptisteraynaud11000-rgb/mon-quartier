@@ -42,7 +42,7 @@ export default async function AnnoncesPage({ searchParams }) {
 
   let query = supabase
     .from('posts')
-    .select('id, type, title, description, approx_zone, created_at, user_id, reserved')
+    .select('id, type, title, description, approx_zone, created_at, user_id, reserved, lat, lng')
     .eq('quartier_id', profile.quartier_id)
     .eq('status', 'active')
     .order('created_at', { ascending: false })

@@ -23,6 +23,9 @@ export default function NewPostPage() {
   const [description, setDescription] = useState('');
   const [availability, setAvailability] = useState('');
   const [approxZone, setApproxZone] = useState('');
+  const [zoneCoords, setZoneCoords] = useState(null); // { lat, lng }
+  const [zoneSuggestions, setZoneSuggestions] = useState([]);
+  const zoneDebounceRef = useRef(null);
 
   const [photos, setPhotos] = useState([]); // [{ file, previewUrl }]
   const [photoError, setPhotoError] = useState('');
@@ -111,6 +114,36 @@ export default function NewPostPage() {
     });
   }
 
+  function handleZoneChange(value) {
+    setApproxZone(value);
+    setZoneCoords(null);
+
+    if (zoneDebounceRef.current) clearTimeout(zoneDebounceRef.current);
+    if (value.trim().length < 4) {
+      setZoneSuggestions([]);
+      return;
+    }
+
+    zoneDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(value)}&limit=5`
+        );
+        const json = await res.json();
+        setZoneSuggestions(json.features || []);
+      } catch {
+        setZoneSuggestions([]);
+      }
+    }, 300);
+  }
+
+  function handleSelectZone(feature) {
+    const [lng, lat] = feature.geometry.coordinates;
+    setApproxZone(feature.properties.label);
+    setZoneCoords({ lat, lng });
+    setZoneSuggestions([]);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -137,6 +170,8 @@ export default function NewPostPage() {
         description: description.trim() || null,
         availability: availability.trim() || null,
         approx_zone: approxZone.trim() || null,
+        lat: zoneCoords?.lat || null,
+        lng: zoneCoords?.lng || null,
         status: 'active',
       })
       .select('id')
@@ -320,7 +355,7 @@ export default function NewPostPage() {
           />
         </div>
 
-        <div>
+        <div className="relative">
           <label htmlFor="approxZone" className="mb-1 block text-sm font-medium text-content-primary">
             Zone approximative <span className="text-content-secondary">(optionnel)</span>
           </label>
@@ -329,10 +364,28 @@ export default function NewPostPage() {
             type="text"
             maxLength={100}
             value={approxZone}
-            onChange={(e) => setApproxZone(e.target.value)}
+            onChange={(e) => handleZoneChange(e.target.value)}
             placeholder="Ex : proche de la mairie"
             className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
           />
+          {zoneSuggestions.length > 0 && (
+            <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-card border border-border bg-surface shadow-soft">
+              {zoneSuggestions.map((feature) => (
+                <li key={feature.properties.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectZone(feature)}
+                    className="w-full px-4 py-3 text-left text-sm text-content-primary hover:bg-surface-card"
+                  >
+                    {feature.properties.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-1 text-xs text-content-secondary">
+            Choisis une suggestion pour afficher la distance approximative aux autres voisins.
+          </p>
         </div>
 
         {error && <p className="text-sm text-corail">{error}</p>}
