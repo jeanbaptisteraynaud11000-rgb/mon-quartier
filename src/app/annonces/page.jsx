@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { POST_TYPES } from '@/lib/postTypes';
 import PostCard from '@/components/PostCard';
+import { Map } from 'lucide-react';
 
 export default async function AnnoncesPage({ searchParams }) {
   const params = await searchParams;
@@ -85,6 +86,13 @@ export default async function AnnoncesPage({ searchParams }) {
   return (
     <div className="flex flex-col gap-4 p-4">
       {/* Filtres de catégorie */}
+      <Link
+        href="/carte"
+        className="flex items-center justify-center gap-1.5 rounded-pill border border-border bg-surface-card py-2 text-sm font-medium text-content-primary transition-fast hover:bg-border/20"
+      >
+        <Map size={15} /> Voir sur la carte
+      </Link>
+
       <div className="grid grid-cols-3 gap-2">
         <FilterTile href="/annonces" label="Toutes" active={!activeType} />
         {POST_TYPES.map((cat) => (

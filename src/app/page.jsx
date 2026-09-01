@@ -9,7 +9,7 @@
 // de tri algorithmique par popularité, pas de notification-appât.
 
 import Link from 'next/link';
-import { Search, Users, Store } from 'lucide-react';
+import { Search, Users, Store, Map } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { POST_TYPES, formatRelativeTime } from '@/lib/postTypes';
 import { formatEventDate } from '@/lib/eventCategories';
@@ -162,6 +162,22 @@ export default async function HomePage() {
       >
         <Search size={17} className="text-content-secondary" />
         <span className="text-sm text-content-secondary">Rechercher dans le quartier</span>
+      </Link>
+
+      <Link
+        href="/carte"
+        className="mt-3 flex items-center justify-between rounded-card bg-corail/10 p-4 shadow-soft transition-fast hover:shadow-none"
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-pill bg-corail/15 text-corail">
+            <Map size={18} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-content-primary">Explorer mon quartier</p>
+            <p className="text-xs text-content-secondary">Annonces, activités et commerces sur la carte</p>
+          </div>
+        </div>
+        <span className="text-xs font-medium text-corail">Ouvrir →</span>
       </Link>
 
       {/* Catégories — vraies illustrations, grille 3 colonnes (2 lignes, pas de scroll) */}
