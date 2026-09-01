@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Onboarding : creation automatique de quartier..."
+
+mkdir -p "src/app/onboarding"
+cat > "src/app/onboarding/page.jsx" << 'MQEOF_SRC_APP_ONBOARDING_PAGE_JSX'
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -327,3 +333,7 @@ function ScreenCard({ emoji, title, children }) {
   );
 }
 
+MQEOF_SRC_APP_ONBOARDING_PAGE_JSX
+
+echo "Onboarding mis a jour avec succes."
+echo "Prochaine etape : executer la migration 026, puis git add -A && git commit -m \"onboarding : creation automatique de quartier\" && git push"
