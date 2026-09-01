@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { EVENT_CATEGORIES, getEventCategoryInfo, formatEventDate } from '@/lib/eventCategories';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
+import PostDistanceBadge from '@/components/PostDistanceBadge';
 import EventCardMenu from './EventCardMenu';
 
 export default async function ActivitesPage({ searchParams }) {
@@ -42,7 +43,7 @@ export default async function ActivitesPage({ searchParams }) {
 
   let query = supabase
     .from('events')
-    .select('id, category, title, location, event_date, max_attendees, user_id, photo_url')
+    .select('id, category, title, location, event_date, max_attendees, user_id, photo_url, lat, lng')
     .eq('quartier_id', profile.quartier_id)
     .eq('status', 'active')
     .gte('event_date', new Date().toISOString())
@@ -127,13 +128,14 @@ export default async function ActivitesPage({ searchParams }) {
           return (
             <div key={event.id} className="rounded-card border border-border bg-surface-card p-3 shadow-soft">
               <div className="flex gap-3">
-                <Link href={`/activites/${event.id}`} className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-card">
+                <Link href={`/activites/${event.id}`} className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-card">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={event.photo_url || getPlaceholderImage(event.category)}
                     alt=""
                     className="h-full w-full object-cover"
                   />
+                  <PostDistanceBadge lat={event.lat} lng={event.lng} />
                 </Link>
 
                 <div className="min-w-0 flex-1">
