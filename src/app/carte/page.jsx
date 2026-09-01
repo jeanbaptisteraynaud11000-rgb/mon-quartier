@@ -40,8 +40,9 @@ export default async function CartePage() {
 
   const quartierId = profile.quartier_id;
 
-  const [{ data: boundary }, { data: posts }, { data: events }, { data: places }] = await Promise.all([
+  const [{ data: boundary }, { data: areaM2 }, { data: posts }, { data: events }, { data: places }] = await Promise.all([
     supabase.rpc('get_quartier_boundary', { p_quartier_id: quartierId }),
+    supabase.rpc('get_quartier_area_m2', { p_quartier_id: quartierId }),
     supabase
       .from('posts')
       .select('id, type, title, description, lat, lng')
@@ -111,6 +112,7 @@ export default async function CartePage() {
           centerLat={profile.quartiers?.center_lat || 0}
           centerLng={profile.quartiers?.center_lng || 0}
           boundary={boundary}
+          areaM2={areaM2}
           points={points}
         />
       </div>
