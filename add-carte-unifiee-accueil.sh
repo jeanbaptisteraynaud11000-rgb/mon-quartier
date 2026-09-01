@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Carte unifiee (photo+texte) avec ombre unique sur accueil..."
+
+mkdir -p "src/app"
+cat > "src/app/page.jsx" << 'MQEOF_SRC_APP_PAGE_JSX'
 // Page d'accueil — Server Component.
 //
 // Direction visuelle : pastilles de catégories pleinement colorées,
@@ -374,3 +380,7 @@ export default async function HomePage() {
   );
 }
 
+MQEOF_SRC_APP_PAGE_JSX
+
+echo "Carte unifiee appliquee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"accueil : carte unifiee avec ombre unique\" && git push"
