@@ -18,6 +18,11 @@ export default function PostCard({ post, thumbnail, author, msgCount = 0, isOwnP
         <div className="relative h-24 w-full overflow-hidden rounded-card bg-surface sm:h-32">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt="" className="h-full w-full object-cover" />
+          {post.reserved && (
+            <span className="absolute left-2 top-2 rounded-pill bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+              Réservé
+            </span>
+          )}
           <FavoriteHeartButton postId={post.id} />
         </div>
       </Link>
@@ -26,7 +31,7 @@ export default function PostCard({ post, thumbnail, author, msgCount = 0, isOwnP
         <span className="inline-block rounded-pill bg-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-content-secondary">
           {typeInfo.label}
         </span>
-        {showMenu && <PostCardMenu postId={post.id} isOwnPost={isOwnPost} />}
+        {showMenu && <PostCardMenu postId={post.id} isOwnPost={isOwnPost} reserved={post.reserved} />}
       </div>
 
       <Link href={`/annonces/${post.id}`} className="block">

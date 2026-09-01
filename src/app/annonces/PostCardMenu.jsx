@@ -7,7 +7,7 @@ import { MoreVertical } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import ReportSheet from '@/components/ReportSheet';
 
-export default function PostCardMenu({ postId, isOwnPost }) {
+export default function PostCardMenu({ postId, isOwnPost, reserved = false }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -20,6 +20,14 @@ export default function PostCardMenu({ postId, isOwnPost }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  async function handleToggleReserved(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    await supabase.from('posts').update({ reserved: !reserved }).eq('id', postId);
+    setOpen(false);
+    router.refresh();
+  }
 
   async function handleMarkCompleted(e) {
     e.preventDefault();
@@ -56,6 +64,12 @@ export default function PostCardMenu({ postId, isOwnPost }) {
         <div className="absolute right-0 top-full z-10 mt-1 w-44 overflow-hidden rounded-card border border-border bg-surface shadow-soft">
           {isOwnPost ? (
             <>
+              <button
+                onClick={handleToggleReserved}
+                className="block w-full px-4 py-2 text-left text-sm text-content-primary hover:bg-surface-card"
+              >
+                {reserved ? 'Annuler la réservation' : 'Marquer réservé'}
+              </button>
               <Link
                 href={`/annonces/${postId}/edit`}
                 onClick={(e) => e.stopPropagation()}

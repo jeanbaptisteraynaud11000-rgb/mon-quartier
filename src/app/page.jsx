@@ -73,7 +73,7 @@ export default async function HomePage() {
         .maybeSingle(),
       supabase
         .from('posts')
-        .select('id, type, title, created_at, user_id')
+        .select('id, type, title, created_at, user_id, reserved')
         .eq('quartier_id', quartierId)
         .eq('status', 'active')
         .neq('type', 'alerte')

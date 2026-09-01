@@ -28,7 +28,7 @@ export default async function AnnonceDetailPage({ params }) {
 
   const { data: post, error } = await supabase
     .from('posts')
-    .select('id, type, title, description, availability, approx_zone, created_at, user_id')
+    .select('id, type, title, description, availability, approx_zone, created_at, user_id, reserved')
     .eq('id', id)
     .single();
 
@@ -72,6 +72,11 @@ export default async function AnnonceDetailPage({ params }) {
       {/* Photo pleine largeur avec retour/favori/partage en overlay */}
       <div className="relative h-72 w-full">
         <Image src={heroImage} alt="" fill sizes="100vw" className="object-cover" priority />
+        {post.reserved && (
+          <span className="absolute left-3 top-14 rounded-pill bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 shadow-soft">
+            Réservé
+          </span>
+        )}
         <PostHeaderActions postId={post.id} postTitle={post.title} />
       </div>
 
@@ -129,7 +134,17 @@ export default async function AnnonceDetailPage({ params }) {
           </div>
         )}
 
-        {!isOwnPost && <ContactActions postId={post.id} postAuthorId={post.user_id} />}
+        {!isOwnPost && (
+          <>
+            {post.reserved && (
+              <p className="text-center text-xs text-amber-700">
+                Cette annonce a été marquée comme réservée — tu peux quand même contacter au
+                cas où ça ne se concrétiserait pas.
+              </p>
+            )}
+            <ContactActions postId={post.id} postAuthorId={post.user_id} />
+          </>
+        )}
 
         {isOwnPost && (
           <div className="rounded-card border border-border bg-surface-card p-4 text-center text-sm text-content-secondary">
