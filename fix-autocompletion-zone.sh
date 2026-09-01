@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+set -e
+echo "Fix : garde-fou autocompletion + affichage coordonnees..."
+
+cat > "src/app/new/page.jsx" << 'MQEOF_SRC_APP_NEW_PAGE_JSX'
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -419,3 +424,7 @@ export default function NewPostPage() {
   );
 }
 
+MQEOF_SRC_APP_NEW_PAGE_JSX
+
+echo "Correction appliquee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"fix: garde-fou autocompletion zone annonce\" && git push"
