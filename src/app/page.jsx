@@ -9,19 +9,13 @@
 // de tri algorithmique par popularité, pas de notification-appât.
 
 import Link from 'next/link';
-import { Search, Users, Store } from 'lucide-react';
+import { Search, Users, Store, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { POST_TYPES, getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
 import { formatEventDate } from '@/lib/eventCategories';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
 import AvatarStack from '@/components/AvatarStack';
-
-const POST_ATTRIBUTION = {
-  don: 'Don par',
-  entraide: 'Entraide proposée par',
-  covoiturage: 'Covoiturage par',
-  cherche: 'Recherché par',
-};
+import FavoriteHeartButton from '@/components/FavoriteHeartButton';
 
 function formatEventDateBadge(dateString) {
   const date = new Date(dateString);
@@ -85,7 +79,7 @@ export default async function HomePage() {
         .eq('status', 'active')
         .neq('type', 'alerte')
         .order('created_at', { ascending: false })
-        .limit(4),
+        .limit(3),
       supabase
         .from('events')
         .select('id, category, title, location, event_date, max_attendees')
@@ -113,9 +107,9 @@ export default async function HomePage() {
   const feedPostIds = feed.map((p) => p.id);
   const eventIds = upcomingEvents.map((e) => e.id);
 
-  const [{ data: authors }, { data: images }, { data: attendeeRows }] = await Promise.all([
+  const [{ data: authors }, { data: images }, { data: attendeeRows }, { data: convCounts }] = await Promise.all([
     relevantUserIds.length > 0
-      ? supabase.from('profiles').select('user_id, display_name').in('user_id', relevantUserIds)
+      ? supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible').in('user_id', relevantUserIds)
       : Promise.resolve({ data: [] }),
     feedPostIds.length > 0
       ? supabase.from('post_images').select('post_id, storage_path, position').in('post_id', feedPostIds).order('position', { ascending: true })
@@ -123,9 +117,14 @@ export default async function HomePage() {
     eventIds.length > 0
       ? supabase.from('event_attendees').select('event_id, user_id').in('event_id', eventIds)
       : Promise.resolve({ data: [] }),
+    feedPostIds.length > 0
+      ? supabase.rpc('get_conversation_counts', { p_post_ids: feedPostIds })
+      : Promise.resolve({ data: [] }),
   ]);
 
   const authorName = Object.fromEntries((authors || []).map((a) => [a.user_id, a.display_name]));
+  const authorPhoto = Object.fromEntries((authors || []).map((a) => [a.user_id, a]));
+  const conversationCounts = Object.fromEntries((convCounts || []).map((c) => [c.post_id, c.count]));
 
   const thumbnailByPost = {};
   for (const img of images || []) {
@@ -204,7 +203,7 @@ export default async function HomePage() {
         </Link>
       )}
 
-      {/* Près de chez toi — cartes horizontales avec vraie photo */}
+      {/* Près de chez toi — grille de 3, triée par date de publication */}
       {feed.length > 0 && (
         <section className="mt-7">
           <div className="mb-3 flex items-baseline justify-between">
@@ -214,26 +213,63 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+          <div className="grid grid-cols-2 gap-3">
             {feed.map((post) => {
               const thumbnail = thumbnailByPost[post.id] || getPlaceholderImage(post.type);
-              const attribution = POST_ATTRIBUTION[post.type] || 'Publié par';
+              const typeInfo = getPostTypeInfo(post.type);
+              const author = authorPhoto[post.user_id];
+              const msgCount = conversationCounts[post.id] || 0;
+
               return (
-                <Link key={post.id} href={`/annonces/${post.id}`} className="w-40 flex-shrink-0">
-                  <div className="relative h-28 w-full overflow-hidden rounded-card bg-surface-card shadow-soft">
+                <Link key={post.id} href={`/annonces/${post.id}`}>
+                  <div className="relative h-24 w-full overflow-hidden rounded-card bg-surface-card shadow-soft">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={thumbnail} alt="" className="h-full w-full object-cover" />
+                    <FavoriteHeartButton postId={post.id} />
                   </div>
-                  <p className="mt-2 line-clamp-2 text-sm font-medium text-content-primary">
+
+                  <span className="mt-2 inline-block rounded-pill bg-surface-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-content-secondary">
+                    {typeInfo.label}
+                  </span>
+
+                  <p className="mt-1 line-clamp-2 text-sm font-medium text-content-primary">
                     {post.title}
                   </p>
-                  <p className="mt-0.5 text-xs text-content-secondary">
-                    {attribution} {authorName[post.user_id] || 'Voisin'}
-                  </p>
+
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center overflow-hidden rounded-pill bg-corail/10 text-[8px] font-semibold text-corail">
+                      {author?.photo_visible && author?.photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={author.photo_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        (author?.display_name || '?').charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <span className="truncate text-[11px] text-content-secondary">
+                      {author?.display_name || 'Voisin'}
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-content-secondary">
+                    <span>{formatRelativeTime(post.created_at)}</span>
+                    {msgCount > 0 && (
+                      <span className="flex items-center gap-0.5">
+                        <MessageCircle size={11} />
+                        {msgCount}
+                      </span>
+                    )}
+                  </div>
                 </Link>
               );
             })}
           </div>
+
+          <Link
+            href="/annonces"
+            className="mt-4 block w-full rounded-pill border border-border py-2.5 text-center text-sm font-medium text-content-primary transition-fast hover:border-content-secondary"
+          >
+            Voir plus
+          </Link>
         </section>
       )}
 

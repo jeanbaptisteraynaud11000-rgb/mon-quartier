@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { PLACE_CATEGORIES } from '@/lib/placeCategories';
+import { compressImage } from '@/lib/compressImage';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
@@ -32,7 +33,7 @@ export default function NewPlacePage() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoError, setPhotoError] = useState('');
 
-  function handlePhotoSelect(e) {
+  async function handlePhotoSelect(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoError('');
@@ -47,8 +48,14 @@ export default function NewPlacePage() {
       return;
     }
 
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    try {
+      const compressed = await compressImage(file);
+      setPhotoFile(compressed);
+      setPhotoPreview(URL.createObjectURL(compressed));
+    } catch {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
   }
 
   useEffect(() => {

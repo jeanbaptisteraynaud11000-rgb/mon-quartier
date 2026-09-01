@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { POST_TYPES } from '@/lib/postTypes';
+import { compressImage } from '@/lib/compressImage';
 import { X } from 'lucide-react';
 
 const MAX_PHOTOS = 5;
@@ -66,12 +67,13 @@ export default function NewPostPage() {
     };
   }, [photos]);
 
-  function handlePhotoSelect(e) {
+  async function handlePhotoSelect(e) {
     const files = Array.from(e.target.files || []);
     setPhotoError('');
+    e.target.value = ''; // permet de re-sélectionner le même fichier après suppression
 
     const accepted = ['image/jpeg', 'image/png', 'image/webp'];
-    const valid = [];
+    const toAdd = [];
 
     for (const file of files) {
       if (!accepted.includes(file.type)) {
@@ -82,19 +84,24 @@ export default function NewPostPage() {
         setPhotoError('Chaque photo doit faire moins de 5 Mo.');
         continue;
       }
-      valid.push(file);
+      try {
+        const compressed = await compressImage(file);
+        toAdd.push({ file: compressed, previewUrl: URL.createObjectURL(compressed) });
+      } catch {
+        // En cas d'échec de compression, on garde le fichier original plutôt
+        // que de bloquer complètement l'utilisateur.
+        toAdd.push({ file, previewUrl: URL.createObjectURL(file) });
+      }
     }
 
     setPhotos((prev) => {
-      const combined = [...prev, ...valid.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))];
+      const combined = [...prev, ...toAdd];
       if (combined.length > MAX_PHOTOS) {
         setPhotoError(`Maximum ${MAX_PHOTOS} photos.`);
         return combined.slice(0, MAX_PHOTOS);
       }
       return combined;
     });
-
-    e.target.value = ''; // permet de re-sélectionner le même fichier après suppression
   }
 
   function removePhoto(index) {

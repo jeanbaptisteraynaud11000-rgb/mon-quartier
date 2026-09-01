@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { EVENT_CATEGORIES } from '@/lib/eventCategories';
+import { compressImage } from '@/lib/compressImage';
 import { ImagePlus, Pencil, List, MapPin, Calendar, Clock, Minus, Plus, Send } from 'lucide-react';
 
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024;
@@ -54,7 +55,7 @@ export default function NewActivityPage() {
     loadProfile();
   }, [router]);
 
-  function handlePhotoSelect(e) {
+  async function handlePhotoSelect(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoError('');
@@ -69,8 +70,14 @@ export default function NewActivityPage() {
       return;
     }
 
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1600, maxHeight: 900 });
+      setPhotoFile(compressed);
+      setPhotoPreview(URL.createObjectURL(compressed));
+    } catch {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
   }
 
   async function handleSubmit(e) {

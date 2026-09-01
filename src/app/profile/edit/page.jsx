@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { compressImage } from '@/lib/compressImage';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 const PRESET_AVATARS = [
@@ -61,7 +62,7 @@ export default function EditProfilePage() {
     load();
   }, [router]);
 
-  function handleAvatarSelect(e) {
+  async function handleAvatarSelect(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoError('');
@@ -76,8 +77,14 @@ export default function EditProfilePage() {
       return;
     }
 
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    try {
+      const compressed = await compressImage(file, { maxWidth: 600, maxHeight: 600 });
+      setAvatarFile(compressed);
+      setAvatarPreview(URL.createObjectURL(compressed));
+    } catch {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
     setShowPresets(false);
   }
 
