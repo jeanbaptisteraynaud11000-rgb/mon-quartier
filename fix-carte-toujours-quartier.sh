@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Fix : carte toujours centree sur le quartier, jamais la position live..."
+
+mkdir -p "src/components/map"
+cat > "src/components/map/QuartierMapView.jsx" << 'MQEOF_SRC_COMPONENTS_MAP_QUARTIERMAPVIEW_JSX'
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -290,3 +296,7 @@ export default function QuartierMapView({ centerLat, centerLng, boundary, areaM2
   );
 }
 
+MQEOF_SRC_COMPONENTS_MAP_QUARTIERMAPVIEW_JSX
+
+echo "Correction appliquee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"fix: carte toujours centree sur le quartier\" && git push"
