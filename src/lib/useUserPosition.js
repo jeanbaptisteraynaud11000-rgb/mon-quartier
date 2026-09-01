@@ -6,24 +6,32 @@ import { useEffect, useState } from 'react';
 // même temps (ex: une grille de 4 annonces), une seule vraie requête de
 // géolocalisation est faite au navigateur, pas une par carte.
 let cachedPosition = null;
+let cachedStatus = 'idle'; // idle | loading | granted | denied | unavailable | timeout
 let pendingRequest = null;
 
 function requestPosition() {
-  if (cachedPosition) return Promise.resolve(cachedPosition);
+  if (cachedPosition) return Promise.resolve({ position: cachedPosition, status: 'granted' });
   if (pendingRequest) return pendingRequest;
+
+  cachedStatus = 'loading';
 
   pendingRequest = new Promise((resolve) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      resolve(null);
+      cachedStatus = 'unavailable';
+      resolve({ position: null, status: 'unavailable' });
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         cachedPosition = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        resolve(cachedPosition);
+        cachedStatus = 'granted';
+        resolve({ position: cachedPosition, status: 'granted' });
       },
-      () => resolve(null),
-      { timeout: 5000 }
+      (err) => {
+        cachedStatus = err.code === 1 ? 'denied' : err.code === 3 ? 'timeout' : 'unavailable';
+        resolve({ position: null, status: cachedStatus });
+      },
+      { timeout: 8000 }
     );
   });
 
@@ -32,11 +40,15 @@ function requestPosition() {
 
 export function useUserPosition() {
   const [position, setPosition] = useState(cachedPosition);
+  const [status, setStatus] = useState(cachedStatus);
 
   useEffect(() => {
     let mounted = true;
-    requestPosition().then((pos) => {
-      if (mounted) setPosition(pos);
+    setStatus((s) => (s === 'idle' ? 'loading' : s));
+    requestPosition().then((result) => {
+      if (!mounted) return;
+      setPosition(result.position);
+      setStatus(result.status);
     });
     return () => {
       mounted = false;
@@ -44,5 +56,28 @@ export function useUserPosition() {
   }, []);
 
   return position;
+}
+
+// Variante qui expose aussi le statut, utile pour afficher un message
+// explicite (plutôt qu'un point bleu qui n'apparaît jamais sans
+// explication).
+export function useUserPositionWithStatus() {
+  const [position, setPosition] = useState(cachedPosition);
+  const [status, setStatus] = useState(cachedStatus);
+
+  useEffect(() => {
+    let mounted = true;
+    setStatus((s) => (s === 'idle' ? 'loading' : s));
+    requestPosition().then((result) => {
+      if (!mounted) return;
+      setPosition(result.position);
+      setStatus(result.status);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return { position, status };
 }
 
