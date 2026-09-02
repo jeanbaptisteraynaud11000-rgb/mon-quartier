@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
 import { getLevel } from '@/lib/levels';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import PostHeaderActions from './PostHeaderActions';
 import ContactActions from './ContactActions';
 
@@ -38,7 +39,7 @@ export default async function AnnonceDetailPage({ params }) {
 
   const { data: authorProfile } = await supabase
     .from('profiles')
-    .select('display_name, points, photo_url, photo_visible')
+    .select('display_name, points, photo_url, photo_visible, verification_status')
     .eq('user_id', post.user_id)
     .single();
 
@@ -105,7 +106,10 @@ export default async function AnnonceDetailPage({ params }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-content-primary">{authorName}</p>
+            <p className="flex items-center gap-1 font-medium text-content-primary">
+              {authorName}
+              {authorProfile?.verification_status === 'verified' && <VerifiedBadge />}
+            </p>
             <p className="text-xs text-content-secondary">{level.label}</p>
           </div>
         </Link>

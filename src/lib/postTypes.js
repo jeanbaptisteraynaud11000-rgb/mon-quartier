@@ -1,13 +1,14 @@
 // Constantes partagées entre /annonces, /new et /annonces/[id] pour garder
 // les libellés et emojis cohérents partout dans l'app.
 
-import { Gift, Handshake, Car, Search, AlertTriangle } from 'lucide-react';
+import { Gift, Handshake, Car, Search, AlertTriangle, ShoppingCart } from 'lucide-react';
 
 export const POST_TYPES = [
   { type: 'don', label: 'Prêt / Don', icon: Gift },
   { type: 'entraide', label: 'Entraide', icon: Handshake },
   { type: 'covoiturage', label: 'Covoiturage', icon: Car },
   { type: 'cherche', label: 'Je cherche', icon: Search },
+  { type: 'achat_groupe', label: 'Achat groupé', icon: ShoppingCart },
   { type: 'alerte', label: 'Alerte quartier', icon: AlertTriangle },
 ];
 

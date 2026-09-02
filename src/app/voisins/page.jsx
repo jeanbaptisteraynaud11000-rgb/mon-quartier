@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 function memberSince(dateString) {
   const date = new Date(dateString);
@@ -51,7 +52,7 @@ export default async function VoisinsPage() {
   // (section 83) en attendant une vraie pagination si le quartier grossit.
   const { data: neighbors, error } = await supabase
     .from('profiles')
-    .select('user_id, display_name, created_at, map_visibility, photo_url, photo_visible')
+    .select('user_id, display_name, created_at, map_visibility, photo_url, photo_visible, verification_status')
     .eq('quartier_id', myProfile.quartier_id)
     .neq('map_visibility', 'off')
     .order('created_at', { ascending: true })
@@ -94,8 +95,9 @@ export default async function VoisinsPage() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-content-primary">
+                <p className="flex items-center gap-1 truncate font-medium text-content-primary">
                   {neighbor.display_name || 'Voisin'} {isMe && '(toi)'}
+                  {neighbor.verification_status === 'verified' && <VerifiedBadge size={12} />}
                 </p>
                 <p className="text-xs text-content-secondary">
                   {memberSince(neighbor.created_at)}

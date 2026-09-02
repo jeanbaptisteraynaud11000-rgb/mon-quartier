@@ -63,7 +63,7 @@ export default async function AnnoncesPage({ searchParams }) {
     const postIds = posts.map((p) => p.id);
 
     const [{ data: authors }, { data: images }, { data: counts }] = await Promise.all([
-      supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible').in('user_id', userIds),
+      supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible, verification_status').in('user_id', userIds),
       supabase
         .from('post_images')
         .select('post_id, storage_path, position')

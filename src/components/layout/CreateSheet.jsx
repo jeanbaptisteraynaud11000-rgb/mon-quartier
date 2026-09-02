@@ -10,6 +10,7 @@ const DESCRIPTIONS = {
   entraide: "Proposez ou demandez de l'aide",
   covoiturage: "Proposez ou rejoignez un trajet",
   cherche: "Recherchez un objet, un service ou une personne",
+  achat_groupe: "Groupez une commande avec vos voisins",
   alerte: "Signalez un problème ou informez vos voisins",
 };
 

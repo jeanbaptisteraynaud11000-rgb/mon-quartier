@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { getLevel } from '@/lib/levels';
 import { Settings, Camera, ShieldCheck, Package, CalendarDays, Heart, Store } from 'lucide-react';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 function memberSince(dateString) {
   if (!dateString) return '';
@@ -32,7 +33,7 @@ export default function ProfilePage() {
 
       const { data: p } = await supabase
         .from('profiles')
-        .select('display_name, photo_url, bio, role, points, quartier_id, created_at')
+        .select('display_name, photo_url, bio, role, points, quartier_id, created_at, verification_status')
         .eq('user_id', user.id)
         .single();
 
@@ -154,8 +155,9 @@ export default function ProfilePage() {
             </Link>
           </div>
 
-          <p className="mt-3 text-lg font-semibold text-content-primary">
+          <p className="mt-3 flex items-center gap-1 text-lg font-semibold text-content-primary">
             {profile?.display_name || 'Voisin'}
+            {profile?.verification_status === 'verified' && <VerifiedBadge size={15} />}
           </p>
           <p className="text-xs text-content-secondary">{memberSince(profile?.created_at)}</p>
         </div>
@@ -241,6 +243,9 @@ export default function ProfilePage() {
         )}
 
         <div className="flex flex-col gap-1 rounded-card border border-border bg-surface-card p-2">
+          <Link href="/sondages" className="rounded-card px-3 py-2 text-sm text-content-primary hover:bg-surface">
+            Sondages de quartier
+          </Link>
           <Link href="/voisins" className="rounded-card px-3 py-2 text-sm text-content-primary hover:bg-surface">
             Mes voisins
           </Link>

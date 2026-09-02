@@ -4,6 +4,7 @@ import { getPostTypeInfo, formatRelativeTime } from '@/lib/postTypes';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
 import FavoriteHeartButton from './FavoriteHeartButton';
 import PostDistanceBadge from './PostDistanceBadge';
+import VerifiedBadge from './VerifiedBadge';
 import PostCardMenu from '@/app/annonces/PostCardMenu';
 
 // Composant serveur : pas d'état, juste de l'affichage. Le cœur favori et
@@ -53,6 +54,7 @@ export default function PostCard({ post, thumbnail, author, msgCount = 0, isOwnP
           <span className="truncate text-[11px] text-content-secondary">
             {author?.display_name || 'Voisin'}
           </span>
+          {author?.verification_status === 'verified' && <VerifiedBadge size={11} />}
         </div>
 
         <div className="mt-1 flex items-center justify-between text-[11px] text-content-secondary">

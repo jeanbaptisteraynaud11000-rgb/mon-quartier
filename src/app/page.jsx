@@ -89,7 +89,7 @@ export default async function HomePage() {
         .limit(3),
       supabase
         .from('profiles')
-        .select('user_id, display_name, photo_url, photo_visible')
+        .select('user_id, display_name, photo_url, photo_visible, verification_status')
         .eq('quartier_id', quartierId)
         .neq('map_visibility', 'off')
         .limit(4),
@@ -108,7 +108,7 @@ export default async function HomePage() {
 
   const [{ data: authors }, { data: images }, { data: attendeeRows }, { data: convCounts }] = await Promise.all([
     relevantUserIds.length > 0
-      ? supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible').in('user_id', relevantUserIds)
+      ? supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible, verification_status').in('user_id', relevantUserIds)
       : Promise.resolve({ data: [] }),
     feedPostIds.length > 0
       ? supabase.from('post_images').select('post_id, storage_path, position').in('post_id', feedPostIds).order('position', { ascending: true })
@@ -136,7 +136,7 @@ export default async function HomePage() {
   const attendeeUserIds = [...new Set((attendeeRows || []).map((a) => a.user_id))];
   const { data: attendeeProfiles } =
     attendeeUserIds.length > 0
-      ? await supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible').in('user_id', attendeeUserIds)
+      ? await supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible, verification_status').in('user_id', attendeeUserIds)
       : { data: [] };
   const attendeeProfileById = Object.fromEntries((attendeeProfiles || []).map((p) => [p.user_id, p]));
 

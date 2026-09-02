@@ -34,6 +34,7 @@ export const CATEGORY_EMOJI = {
   entraide: { emoji: '🤝', color: '#00A699' },
   covoiturage: { emoji: '🚗', color: '#FF5A5F' },
   cherche: { emoji: '🔍', color: '#00A699' },
+  achat_groupe: { emoji: '🛒', color: '#00A699' },
   alerte: { emoji: '⚠️', color: '#DC2626' },
   // Activités
   sortie: { emoji: '📍', color: '#8B5CF6' },

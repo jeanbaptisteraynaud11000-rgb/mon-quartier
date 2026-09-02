@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { formatRelativeTime } from '@/lib/postTypes';
-import { Bell, MessageCircle, CalendarCheck, CalendarX, UserPlus } from 'lucide-react';
+import { Bell, MessageCircle, CalendarCheck, CalendarX, UserPlus, MapPin } from 'lucide-react';
 
 const ICONS = {
   message: MessageCircle,
   event_join: CalendarCheck,
   event_cancelled: CalendarX,
   invitation_used: UserPlus,
+  watched_alert: MapPin,
 };
 
 export default function NotificationsPage() {

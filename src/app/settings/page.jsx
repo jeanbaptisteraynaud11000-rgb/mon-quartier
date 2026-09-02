@@ -149,6 +149,13 @@ export default function SettingsPage() {
       </section>
 
       <Link
+        href="/lieux-surveilles"
+        className="rounded-card border border-border bg-surface-card p-4 text-center text-sm font-medium text-content-primary hover:bg-surface"
+      >
+        Lieux surveillés (alertes géolocalisées) →
+      </Link>
+
+      <Link
         href="/profile/edit"
         className="rounded-card border border-border bg-surface-card p-4 text-center text-sm font-medium text-content-primary hover:bg-surface"
       >
