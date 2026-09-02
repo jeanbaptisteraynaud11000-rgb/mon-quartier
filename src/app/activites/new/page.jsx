@@ -25,6 +25,7 @@ export default function NewActivityPage() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [maxAttendees, setMaxAttendees] = useState(10);
+  const [priceInfo, setPriceInfo] = useState('');
 
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -152,6 +153,7 @@ export default function NewActivityPage() {
         lng: locationCoords?.lng || null,
         event_date: isoDate,
         max_attendees: maxAttendees,
+        price_info: priceInfo.trim() || null,
         status: 'active',
       })
       .select('id')
@@ -368,6 +370,22 @@ export default function NewActivityPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Prix */}
+        <div>
+          <label htmlFor="priceInfo" className="mb-1 block text-sm font-medium text-content-primary">
+            Prix <span className="text-content-secondary">(optionnel)</span>
+          </label>
+          <input
+            id="priceInfo"
+            type="text"
+            maxLength={50}
+            value={priceInfo}
+            onChange={(e) => setPriceInfo(e.target.value)}
+            placeholder="Ex : Gratuit, 5€, Prix libre"
+            className="w-full rounded-card border border-border bg-surface px-4 py-3 text-content-primary outline-none transition-fast focus:border-corail"
+          />
         </div>
 
         {/* Nombre de places — stepper */}

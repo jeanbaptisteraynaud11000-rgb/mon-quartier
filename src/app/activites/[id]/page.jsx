@@ -28,6 +28,27 @@ export default function ActivityDetailPage() {
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+
+  async function loadComments() {
+    const { data: rows } = await supabase
+      .from('event_comments')
+      .select('id, user_id, content, created_at')
+      .eq('event_id', id)
+      .order('created_at', { ascending: true });
+
+    const userIds = [...new Set((rows || []).map((r) => r.user_id))];
+    const { data: profiles } =
+      userIds.length > 0
+        ? await supabase.from('profiles').select('user_id, display_name, photo_url, photo_visible').in('user_id', userIds)
+        : { data: [] };
+    const profileById = Object.fromEntries((profiles || []).map((p) => [p.user_id, p]));
+
+    setComments((rows || []).map((r) => ({ ...r, author: profileById[r.user_id] })));
+  }
+
   async function load() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -38,7 +59,7 @@ export default function ActivityDetailPage() {
 
     const { data: ev, error } = await supabase
       .from('events')
-      .select('id, category, title, description, location, event_date, max_attendees, status, user_id, photo_url')
+      .select('id, category, title, description, location, event_date, max_attendees, status, user_id, photo_url, price_info')
       .eq('id', id)
       .single();
 
@@ -76,8 +97,40 @@ export default function ActivityDetailPage() {
 
   useEffect(() => {
     load();
+    loadComments();
+
+    const channel = supabase
+      .channel(`event-comments-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'event_comments', filter: `event_id=eq.${id}` },
+        () => loadComments()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function handlePostComment(e) {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    setPostingComment(true);
+
+    const { error } = await supabase.from('event_comments').insert({
+      event_id: id,
+      user_id: currentUserId,
+      content: newComment.trim(),
+    });
+
+    setPostingComment(false);
+    if (!error) {
+      setNewComment('');
+      loadComments();
+    }
+  }
 
   async function handleJoin() {
     setBusy(true);
@@ -173,6 +226,13 @@ export default function ActivityDetailPage() {
           </p>
         )}
 
+        {event.price_info && (
+          <p className="mt-2 text-sm text-content-secondary">
+            <span className="font-medium text-content-primary">Prix : </span>
+            {event.price_info}
+          </p>
+        )}
+
         {event.description && (
           <p className="mt-3 whitespace-pre-wrap text-content-primary">{event.description}</p>
         )}
@@ -220,6 +280,60 @@ export default function ActivityDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Questions publiques — visible par tout le quartier, contrairement
+          à la messagerie privée. Utile pour les questions logistiques que
+          tout le monde se pose ("faut-il apporter quelque chose ?"). */}
+      <div>
+        <h2 className="mb-2 text-sm font-medium text-content-secondary">
+          Questions ({comments.length})
+        </h2>
+
+        <form onSubmit={handlePostComment} className="mb-3 flex gap-2">
+          <input
+            type="text"
+            maxLength={500}
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Poser une question, visible par tout le quartier..."
+            className="w-full rounded-pill border border-border bg-surface px-4 py-2 text-sm text-content-primary outline-none transition-fast focus:border-corail"
+          />
+          <button
+            type="submit"
+            disabled={postingComment || !newComment.trim()}
+            className="flex-shrink-0 rounded-pill bg-corail px-4 py-2 text-sm font-medium text-white transition-fast hover:bg-corail-hover disabled:opacity-60"
+          >
+            Envoyer
+          </button>
+        </form>
+
+        {comments.length === 0 && (
+          <p className="text-center text-sm text-content-secondary">
+            Aucune question pour l'instant.
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2">
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-2 rounded-card border border-border bg-surface-card p-3">
+              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-pill bg-corail/10 text-[10px] font-semibold text-corail">
+                {c.author?.photo_visible && c.author?.photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.author.photo_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  (c.author?.display_name || '?').charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-content-secondary">
+                  {c.author?.display_name || 'Voisin'}
+                </p>
+                <p className="text-sm text-content-primary">{c.content}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

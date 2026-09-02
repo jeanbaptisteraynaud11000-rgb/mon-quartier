@@ -55,7 +55,7 @@ export default async function CartePage() {
       .not('lat', 'is', null),
     supabase
       .from('events')
-      .select('id, category, title, location, event_date, max_attendees, user_id, photo_url, lat, lng')
+      .select('id, category, title, location, event_date, max_attendees, user_id, photo_url, price_info, lat, lng')
       .eq('quartier_id', quartierId)
       .eq('status', 'active')
       .gte('event_date', new Date().toISOString())
@@ -139,7 +139,7 @@ export default async function CartePage() {
           month: 'short',
           hour: '2-digit',
           minute: '2-digit',
-        }),
+        }) + (e.price_info ? ` · ${e.price_info}` : ''),
         zone: '',
         distanceLabel: distanceFromCenter(e.lat, e.lng) || '',
         lat: e.lat,

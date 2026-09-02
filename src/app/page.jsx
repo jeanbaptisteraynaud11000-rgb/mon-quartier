@@ -9,7 +9,7 @@
 // de tri algorithmique par popularité, pas de notification-appât.
 
 import Link from 'next/link';
-import { Search, Users, Store, Map } from 'lucide-react';
+import { Search, Users, Store, Map, BarChart3 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { POST_TYPES, formatRelativeTime } from '@/lib/postTypes';
 import { formatEventDate } from '@/lib/eventCategories';
@@ -59,7 +59,7 @@ export default async function HomePage() {
   const quartierId = profile.quartier_id;
   const firstName = profile.display_name?.split(' ')[0] || null;
 
-  const [neighborsCount, featuredAlertResult, feedResult, upcomingEventsResult, neighborPreviewResult] =
+  const [neighborsCount, featuredAlertResult, feedResult, upcomingEventsResult, neighborPreviewResult, activePollResult] =
     await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('quartier_id', quartierId),
       supabase
@@ -93,9 +93,18 @@ export default async function HomePage() {
         .eq('quartier_id', quartierId)
         .neq('map_visibility', 'off')
         .limit(4),
+      supabase
+        .from('polls')
+        .select('id, question', { count: 'exact' })
+        .eq('quartier_id', quartierId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1),
     ]);
 
   const featuredAlert = featuredAlertResult.data;
+  const activePoll = activePollResult.data?.[0] || null;
+  const activePollCount = activePollResult.count || 0;
   const feed = feedResult.data || [];
   const upcomingEvents = upcomingEventsResult.data || [];
   const neighborPreview = neighborPreviewResult.data || [];
@@ -215,6 +224,25 @@ export default async function HomePage() {
               {formatRelativeTime(featuredAlert.created_at)}
             </p>
           </div>
+        </Link>
+      )}
+
+      {/* Sondage actif — simple bannière de découverte, le vote se fait sur /sondages */}
+      {activePoll && (
+        <Link
+          href="/sondages"
+          className="mt-5 flex items-center gap-3 rounded-card bg-vert/10 p-4 shadow-soft transition-fast hover:shadow-none"
+        >
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-pill bg-vert/15 text-vert">
+            <BarChart3 size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-content-primary">Sondage du quartier</p>
+            <p className="truncate text-xs text-content-secondary">{activePoll.question}</p>
+          </div>
+          {activePollCount > 1 && (
+            <span className="flex-shrink-0 text-xs font-medium text-vert">+{activePollCount - 1}</span>
+          )}
         </Link>
       )}
 

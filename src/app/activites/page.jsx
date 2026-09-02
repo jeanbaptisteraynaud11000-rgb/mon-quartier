@@ -43,7 +43,7 @@ export default async function ActivitesPage({ searchParams }) {
 
   let query = supabase
     .from('events')
-    .select('id, category, title, location, event_date, max_attendees, user_id, photo_url, lat, lng')
+    .select('id, category, title, location, event_date, max_attendees, user_id, photo_url, price_info, lat, lng')
     .eq('quartier_id', profile.quartier_id)
     .eq('status', 'active')
     .gte('event_date', new Date().toISOString())
@@ -167,6 +167,11 @@ export default async function ActivitesPage({ searchParams }) {
                     <span className="rounded-pill bg-surface px-2 py-0.5 text-[11px] font-medium text-content-secondary">
                       {catInfo.label}
                     </span>
+                    {event.price_info && (
+                      <span className="rounded-pill bg-vert/10 px-2 py-0.5 text-[11px] font-medium text-vert">
+                        {event.price_info}
+                      </span>
+                    )}
                     <span className={`text-[11px] font-medium ${isFull ? 'text-corail' : 'text-content-secondary'}`}>
                       {isFull ? 'Complet' : `${count} / ${event.max_attendees} places`}
                     </span>
