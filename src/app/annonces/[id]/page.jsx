@@ -29,7 +29,7 @@ export default async function AnnonceDetailPage({ params }) {
 
   const { data: post, error } = await supabase
     .from('posts')
-    .select('id, type, title, description, availability, approx_zone, created_at, user_id, reserved, lat, lng, loan_type, item_condition, brand_model, loan_duration, deposit_required, pickup_preference, show_phone, extra_notes')
+    .select('id, type, title, description, availability, approx_zone, created_at, user_id, reserved, lat, lng, loan_type, item_condition, brand_model, loan_duration, deposit_required, pickup_preference, show_phone, extra_notes, departure_point, arrival_point, trip_type, trip_datetime, seats_available, price_info, help_type, urgency, estimated_duration, budget_max, min_quantity, deadline, pickup_point')
     .eq('id', id)
     .single();
 
@@ -134,6 +134,86 @@ export default async function AnnonceDetailPage({ params }) {
               <p className="mt-0.5 text-sm font-medium text-content-primary">
                 {formatRelativeTime(post.created_at)}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Covoiturage */}
+        {post.type === 'covoiturage' && (post.departure_point || post.arrival_point) && (
+          <div className="rounded-card border border-border bg-surface-card p-4">
+            <h2 className="mb-2 text-sm font-semibold text-content-primary">Trajet</h2>
+            <div className="flex flex-col gap-2 text-sm">
+              {post.departure_point && (
+                <p><span className="text-content-secondary">Départ : </span><span className="font-medium text-content-primary">{post.departure_point}</span></p>
+              )}
+              {post.arrival_point && (
+                <p><span className="text-content-secondary">Arrivée : </span><span className="font-medium text-content-primary">{post.arrival_point}</span></p>
+              )}
+              {post.trip_datetime && (
+                <p><span className="text-content-secondary">Départ prévu : </span><span className="font-medium text-content-primary">
+                  {new Date(post.trip_datetime).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                </span></p>
+              )}
+              <p><span className="text-content-secondary">Trajet : </span><span className="font-medium text-content-primary">{post.trip_type === 'aller_retour' ? 'Aller-retour' : 'Aller simple'}</span></p>
+              {post.seats_available && (
+                <p><span className="text-content-secondary">Places : </span><span className="font-medium text-content-primary">{post.seats_available}</span></p>
+              )}
+              {post.price_info && (
+                <p><span className="text-content-secondary">Participation : </span><span className="font-medium text-content-primary">{post.price_info}</span></p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Entraide */}
+        {post.type === 'entraide' && (post.help_type || post.urgency === 'urgent' || post.estimated_duration) && (
+          <div className="rounded-card border border-border bg-surface-card p-4">
+            <h2 className="mb-2 text-sm font-semibold text-content-primary">Détails</h2>
+            <div className="flex flex-wrap gap-2">
+              {post.help_type && (
+                <span className="rounded-pill bg-surface px-3 py-1 text-xs font-medium text-content-primary">
+                  {{ bricolage: 'Bricolage', jardinage: 'Jardinage', garde_enfants: "Garde d'enfants", demarches_admin: 'Démarches admin', autre: 'Autre' }[post.help_type]}
+                </span>
+              )}
+              {post.urgency === 'urgent' && (
+                <span className="rounded-pill bg-corail/10 px-3 py-1 text-xs font-medium text-corail">Urgent</span>
+              )}
+              {post.estimated_duration && (
+                <span className="rounded-pill bg-surface px-3 py-1 text-xs font-medium text-content-primary">
+                  Durée : {post.estimated_duration}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Je cherche */}
+        {post.type === 'cherche' && post.budget_max && (
+          <div className="rounded-card border border-border bg-surface-card p-4">
+            <p className="text-xs text-content-secondary">Budget maximum</p>
+            <p className="mt-0.5 text-sm font-medium text-content-primary">{post.budget_max}</p>
+          </div>
+        )}
+
+        {/* Achat groupé */}
+        {post.type === 'achat_groupe' && (post.min_quantity || post.deadline || post.pickup_point || post.price_info) && (
+          <div className="rounded-card border border-border bg-surface-card p-4">
+            <h2 className="mb-2 text-sm font-semibold text-content-primary">Détails de la commande</h2>
+            <div className="flex flex-col gap-2 text-sm">
+              {post.min_quantity && (
+                <p><span className="text-content-secondary">Minimum pour valider : </span><span className="font-medium text-content-primary">{post.min_quantity} personnes</span></p>
+              )}
+              {post.deadline && (
+                <p><span className="text-content-secondary">Date limite : </span><span className="font-medium text-content-primary">
+                  {new Date(post.deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                </span></p>
+              )}
+              {post.pickup_point && (
+                <p><span className="text-content-secondary">Retrait : </span><span className="font-medium text-content-primary">{post.pickup_point}</span></p>
+              )}
+              {post.price_info && (
+                <p><span className="text-content-secondary">Prix : </span><span className="font-medium text-content-primary">{post.price_info}</span></p>
+              )}
             </div>
           </div>
         )}
