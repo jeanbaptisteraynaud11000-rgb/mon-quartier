@@ -29,7 +29,7 @@ export default async function AnnonceDetailPage({ params }) {
 
   const { data: post, error } = await supabase
     .from('posts')
-    .select('id, type, title, description, availability, approx_zone, created_at, user_id, reserved')
+    .select('id, type, title, description, availability, approx_zone, created_at, user_id, reserved, lat, lng, loan_type, item_condition, brand_model, loan_duration, deposit_required, pickup_preference, show_phone, extra_notes')
     .eq('id', id)
     .single();
 
@@ -39,7 +39,7 @@ export default async function AnnonceDetailPage({ params }) {
 
   const { data: authorProfile } = await supabase
     .from('profiles')
-    .select('display_name, points, photo_url, photo_visible, verification_status')
+    .select('display_name, points, photo_url, photo_visible, verification_status, phone')
     .eq('user_id', post.user_id)
     .single();
 
@@ -135,6 +135,68 @@ export default async function AnnonceDetailPage({ params }) {
                 {formatRelativeTime(post.created_at)}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Détails Prêt/Don — uniquement si ce type et au moins un champ rempli */}
+        {post.type === 'don' && (post.item_condition || post.brand_model || post.loan_duration || post.deposit_required || post.pickup_preference) && (
+          <div className="rounded-card border border-border bg-surface-card p-4">
+            <h2 className="mb-2 text-sm font-semibold text-content-primary">
+              {post.loan_type === 'don' ? 'Détails du don' : 'Détails du prêt'}
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {post.item_condition && (
+                <div>
+                  <p className="text-xs text-content-secondary">État</p>
+                  <p className="mt-0.5 text-sm font-medium text-content-primary">
+                    {{ neuf: 'Neuf', tres_bon: 'Très bon', bon: 'Bon', a_reparer: 'À réparer' }[post.item_condition]}
+                  </p>
+                </div>
+              )}
+              {post.brand_model && (
+                <div>
+                  <p className="text-xs text-content-secondary">Marque / modèle</p>
+                  <p className="mt-0.5 text-sm font-medium text-content-primary">{post.brand_model}</p>
+                </div>
+              )}
+              {post.loan_type === 'pret' && post.loan_duration && (
+                <div>
+                  <p className="text-xs text-content-secondary">Durée du prêt</p>
+                  <p className="mt-0.5 text-sm font-medium text-content-primary">
+                    {{ '1_a_3_jours': '1 à 3 jours', '1_semaine': '1 semaine', flexible: 'Flexible' }[post.loan_duration]}
+                  </p>
+                </div>
+              )}
+              {post.loan_type === 'pret' && (
+                <div>
+                  <p className="text-xs text-content-secondary">Caution</p>
+                  <p className="mt-0.5 text-sm font-medium text-content-primary">
+                    {post.deposit_required ? 'Oui' : 'Aucune'}
+                  </p>
+                </div>
+              )}
+              {post.pickup_preference && (
+                <div>
+                  <p className="text-xs text-content-secondary">Remise</p>
+                  <p className="mt-0.5 text-sm font-medium text-content-primary">
+                    {post.pickup_preference === 'chez_moi' ? 'Chez le propriétaire' : 'Peut se déplacer'}
+                  </p>
+                </div>
+              )}
+            </div>
+            {post.extra_notes && (
+              <p className="mt-3 border-t border-border pt-3 text-sm text-content-secondary">
+                {post.extra_notes}
+              </p>
+            )}
+            {post.show_phone && authorProfile?.phone && (
+              <a
+                href={`tel:${authorProfile.phone}`}
+                className="mt-3 block border-t border-border pt-3 text-sm font-medium text-corail"
+              >
+                📞 {authorProfile.phone}
+              </a>
+            )}
           </div>
         )}
 
