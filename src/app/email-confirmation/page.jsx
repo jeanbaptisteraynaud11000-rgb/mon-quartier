@@ -1,9 +1,10 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 
-export default function EmailConfirmationPage() {
+function EmailConfirmationContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email');
 
@@ -34,6 +35,14 @@ export default function EmailConfirmationPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function EmailConfirmationPage() {
+  return (
+    <Suspense fallback={null}>
+      <EmailConfirmationContent />
+    </Suspense>
   );
 }
 
