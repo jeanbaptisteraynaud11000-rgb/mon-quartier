@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Icone notification offre en attente..."
+
+mkdir -p "src/app/notifications"
+cat > "src/app/notifications/page.jsx" << 'MQEOF_SRC_APP_NOTIFICATIONS_PAGE_JSX'
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -100,3 +106,7 @@ export default function NotificationsPage() {
   );
 }
 
+MQEOF_SRC_APP_NOTIFICATIONS_PAGE_JSX
+
+echo "Icone ajoutee avec succes."
+echo "Prochaine etape : executer la migration 041, puis git add -A && git commit -m \"notification super_admin pour offre en attente\" && git push"
