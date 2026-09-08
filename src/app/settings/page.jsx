@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import PushNotificationToggle from '@/components/PushNotificationToggle';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -147,6 +148,8 @@ export default function SettingsPage() {
           </button>
         </form>
       </section>
+
+      <PushNotificationToggle />
 
       <Link
         href="/lieux-surveilles"

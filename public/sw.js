@@ -34,3 +34,46 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
+// --- Notifications push --------------------------------------------------
+// Reçoit le push envoyé par l'Edge Function Supabase et l'affiche comme
+// notification système, même si Hoody n'est pas ouvert à ce moment-là.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: 'Hoody', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'Hoody';
+  const options = {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: data.url || '/' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Clic sur la notification : ramène au premier plan un onglet Hoody déjà
+// ouvert s'il y en a un, sinon en ouvre un nouveau sur la bonne page.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
