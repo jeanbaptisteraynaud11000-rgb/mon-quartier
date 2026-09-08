@@ -71,6 +71,12 @@ export default async function AdminDashboard() {
         >
           Membres →
         </Link>
+        <Link
+          href="/admin/commerces"
+          className="rounded-card border border-border bg-surface-card p-4 font-medium text-content-primary transition-fast hover:bg-border/30"
+        >
+          Commerces — sponsoring & offres →
+        </Link>
       </div>
     </div>
   );

@@ -6,9 +6,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { PLACE_CATEGORIES, getPlaceCategoryInfo } from '@/lib/placeCategories';
 import { sortByDistance, formatDistance } from '@/lib/distanceCalculator';
 import { getPlaceholderImage } from '@/lib/placeholderImages';
+import { Star, Tag } from 'lucide-react';
 
 export default function CommercesPage() {
   const [places, setPlaces] = useState([]);
+  const [offersByPlace, setOffersByPlace] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(null);
   const [userPosition, setUserPosition] = useState(null);
@@ -32,17 +34,35 @@ export default function CommercesPage() {
 
       const { data } = await supabase
         .from('places')
-        .select('id, category, name, description, address, lat, lng, photo_url')
+        .select('id, category, name, description, address, lat, lng, photo_url, is_sponsored, sponsored_until')
         .eq('quartier_id', profile.quartier_id)
         .order('created_at', { ascending: false });
+
+      const placeIds = (data || []).map((p) => p.id);
+
+      // Offres actives et dans leur période — visibles par tout le monde
+      // dans le quartier (RLS s'en charge déjà).
+      const { data: offers } =
+        placeIds.length > 0
+          ? await supabase
+              .from('place_offers')
+              .select('id, place_id, title, ends_at')
+              .in('place_id', placeIds)
+              .eq('status', 'active')
+          : { data: [] };
+
+      const now = new Date();
+      const offersMap = {};
+      for (const o of offers || []) {
+        if (new Date(o.ends_at) >= now) offersMap[o.place_id] = o;
+      }
+      setOffersByPlace(offersMap);
 
       setPlaces(data || []);
       setLoading(false);
     }
     load();
 
-    // Géolocalisation LIVE, jamais stockée — juste pour trier l'affichage
-    // du moment. Dégradation propre si refusée ou indisponible.
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
@@ -73,7 +93,12 @@ export default function CommercesPage() {
   }
 
   const filtered = activeCategory ? places.filter((p) => p.category === activeCategory) : places;
-  const sorted = userPosition ? sortByDistance(filtered, userPosition.lat, userPosition.lng) : filtered;
+  const sortedByDistance = userPosition ? sortByDistance(filtered, userPosition.lat, userPosition.lng) : filtered;
+
+  // Les fiches sponsorisées apparaissent en tête — toujours étiquetées
+  // clairement "Sponsorisé", jamais confondues avec du contenu organique.
+  const isCurrentlySponsored = (p) => p.is_sponsored && (!p.sponsored_until || new Date(p.sponsored_until) >= new Date());
+  const sorted = [...sortedByDistance].sort((a, b) => (isCurrentlySponsored(b) ? 1 : 0) - (isCurrentlySponsored(a) ? 1 : 0));
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -135,11 +160,16 @@ export default function CommercesPage() {
         {sorted.map((place) => {
           const catInfo = getPlaceCategoryInfo(place.category);
           const distance = place._distance !== undefined ? formatDistance(place._distance) : null;
+          const sponsored = isCurrentlySponsored(place);
+          const offer = offersByPlace[place.id];
+
           return (
             <Link
               key={place.id}
               href={`/commerces/${place.id}`}
-              className="flex items-center gap-3 rounded-card border border-border bg-surface-card p-3 transition-fast hover:bg-border/20"
+              className={`flex items-center gap-3 rounded-card border p-3 transition-fast hover:bg-border/20 ${
+                sponsored ? 'border-amber-300 bg-amber-50/50' : 'border-border bg-surface-card'
+              }`}
             >
               <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-pill">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -150,10 +180,22 @@ export default function CommercesPage() {
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-content-primary">{place.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate font-medium text-content-primary">{place.name}</p>
+                  {sponsored && (
+                    <span className="flex flex-shrink-0 items-center gap-0.5 rounded-pill bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                      <Star size={9} fill="currentColor" /> Sponsorisé
+                    </span>
+                  )}
+                </div>
                 <p className="truncate text-xs text-content-secondary">
                   {catInfo.label}{place.address ? ` · ${place.address}` : ''}
                 </p>
+                {offer && (
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs font-medium text-vert">
+                    <Tag size={11} /> {offer.title}
+                  </p>
+                )}
               </div>
               {distance && (
                 <span className="flex-shrink-0 text-xs font-medium text-content-secondary">{distance}</span>
