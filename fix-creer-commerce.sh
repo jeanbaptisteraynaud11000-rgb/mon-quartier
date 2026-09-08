@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+set -e
+echo "Ajout de la tuile Commerce dans le menu de creation..."
+
+mkdir -p "src/components/layout"
+cat > "src/components/layout/CreateSheet.jsx" << 'MQEOF_SRC_COMPONENTS_LAYOUT_CREATESHEET_JSX'
 'use client';
 
 import { useEffect } from 'react';
@@ -106,3 +112,7 @@ export default function CreateSheet({ open, onClose }) {
   );
 }
 
+MQEOF_SRC_COMPONENTS_LAYOUT_CREATESHEET_JSX
+
+echo "Tuile Commerce ajoutee avec succes."
+echo "Prochaine etape : git add -A && git commit -m \"fix: ajout tuile Commerce dans le menu de creation\" && git push"
